@@ -14,22 +14,50 @@ import type {
 const API_URL = process.env.BRIDGE_API_URL || "https://api.bridge.xyz/v0";
 const API_KEY = process.env.BRIDGE_API_KEY || "";
 
+export class BridgeError extends Error {
+  status: number;
+  body: unknown;
+
+  constructor(status: number, body: unknown, rawText: string) {
+    super(`Bridge API ${status}: ${rawText}`);
+    this.name = "BridgeError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function bridgeFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const method = (options.method || "GET").toUpperCase();
+  const baseHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Api-Key": API_KEY,
+  };
+
+  // Bridge requires an Idempotency-Key on all mutating (POST) requests.
+  if (method === "POST") {
+    baseHeaders["Idempotency-Key"] = crypto.randomUUID();
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
-      "Api-Key": API_KEY,
+      ...baseHeaders,
       ...options.headers,
     },
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Bridge API ${res.status}: ${body}`);
+    const rawText = await res.text();
+    let parsed: unknown = rawText;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      // keep raw text
+    }
+    throw new BridgeError(res.status, parsed, rawText);
   }
 
   return res.json();
@@ -65,10 +93,22 @@ export async function createKYCLink(data: {
   email: string;
   type: "individual" | "business";
 }): Promise<BridgeKYCLink> {
-  return bridgeFetch<BridgeKYCLink>("/kyc_links", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  try {
+    return await bridgeFetch<BridgeKYCLink>("/kyc_links", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    // Bridge returns 400 duplicate_record when a KYC link already exists for
+    // this email, but includes the existing link for reuse.
+    if (error instanceof BridgeError && error.status === 400) {
+      const body = error.body as { code?: string; existing_kyc_link?: BridgeKYCLink } | null;
+      if (body?.code === "duplicate_record" && body.existing_kyc_link) {
+        return body.existing_kyc_link;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getKYCLinkStatus(

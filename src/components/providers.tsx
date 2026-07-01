@@ -1,7 +1,8 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
 import { SWRConfig } from "swr";
+import { Toaster } from "@/components/ui/toast";
+import { AuthProvider } from "@/components/auth-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         shouldRetryOnError: false,
       }}
     >
-      <SessionProvider>{children}</SessionProvider>
+      <AuthProvider>{children}</AuthProvider>
+      <Toaster />
     </SWRConfig>
   );
 }

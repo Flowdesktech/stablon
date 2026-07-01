@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await requireUser();
+    if ("error" in guard) return guard.error;
+    const { user } = guard;
 
-    const userId = (session.user as unknown as Record<string, unknown>).id as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.bridgeCustomerId) {
+    if (!user.bridgeCustomerId) {
       return NextResponse.json({ total_earned: "0", current_apy: "5.0", currency: "usdb" });
     }
 

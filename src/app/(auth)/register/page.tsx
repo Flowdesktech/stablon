@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { registerWithPassword } from "@/lib/firebase/auth-actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -22,30 +22,12 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Registration failed");
-        setLoading(false);
-        return;
-      }
-
-      const signInRes = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (signInRes?.error) {
-        setError("Account created but login failed. Please sign in.");
-        setLoading(false);
-      } else {
+      const res = await registerWithPassword(name, email, password);
+      if (res.ok) {
         router.push("/dashboard");
+      } else {
+        setError(res.message || "Registration failed");
+        setLoading(false);
       }
     } catch {
       setError("Something went wrong");
@@ -66,7 +48,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
               <span className="text-white font-bold text-lg">W</span>
             </div>
-            <span className="text-2xl font-bold text-white">Wayex</span>
+            <span className="text-2xl font-bold text-white">Stablon</span>
           </Link>
           <h1 className="text-2xl font-bold text-white">Create your account</h1>
           <p className="text-white/60 mt-2">Start banking globally in minutes</p>

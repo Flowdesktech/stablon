@@ -85,7 +85,7 @@ function FiatDepositDetails({ accounts, rail }: { accounts: BridgeVirtualAccount
       {details.pix_key && <CopyField label="PIX Key" value={details.pix_key} />}
       <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
         <p className="text-xs text-amber-300">
-          Deposited funds will be automatically converted to stablecoins and credited to your Wayex balance.
+          Deposited funds will be automatically converted to stablecoins and credited to your Stablon balance.
         </p>
       </div>
     </div>
@@ -124,7 +124,7 @@ export default function DepositPage() {
           onClick={() => { setMethod("crypto"); setSelectedRail(null); }}
           className="flex-1 sm:flex-none"
         >
-          <Wallet className="w-4 h-4" /> Crypto Deposit
+          <Wallet className="w-4 h-4" /> On-Chain
         </Button>
       </div>
 

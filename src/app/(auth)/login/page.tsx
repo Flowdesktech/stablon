@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signInWithPassword } from "@/lib/firebase/auth-actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,18 +22,23 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const res = await signInWithPassword(email, password, totp || undefined);
 
-    if (res?.error) {
-      setError("Invalid email or password");
-      setLoading(false);
-    } else {
+    if (res.ok) {
       router.push("/dashboard");
+      return;
     }
+
+    if (res.code === "2FA_REQUIRED") {
+      setTwoFactorRequired(true);
+      setError("");
+    } else if (res.code === "2FA_INVALID") {
+      setTwoFactorRequired(true);
+      setError("Invalid authentication code");
+    } else {
+      setError("Invalid email or password");
+    }
+    setLoading(false);
   }
 
   return (
@@ -47,7 +54,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
               <span className="text-white font-bold text-lg">W</span>
             </div>
-            <span className="text-2xl font-bold text-white">Wayex</span>
+            <span className="text-2xl font-bold text-white">Stablon</span>
           </Link>
           <h1 className="text-2xl font-bold text-white">Welcome back</h1>
           <p className="text-white/60 mt-2">Sign in to your account</p>
@@ -77,8 +84,31 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
+              disabled={twoFactorRequired}
             />
           </div>
+
+          {twoFactorRequired && (
+            <div className="animate-fade-in">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-white/70 mb-1.5">
+                <ShieldCheck className="w-4 h-4 text-purple-400" />
+                Authentication Code
+              </label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={totp}
+                onChange={(e) => setTotp(e.target.value)}
+                placeholder="6-digit code from your app"
+                autoFocus
+                required
+              />
+              <p className="text-xs text-white/40 mt-1.5">
+                Enter the code from your authenticator app, or use a recovery code, to finish signing in.
+              </p>
+            </div>
+          )}
 
           {error && (
             <p className="text-red-400 text-sm text-center">{error}</p>
@@ -87,6 +117,10 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : twoFactorRequired ? (
+              <>
+                Verify &amp; Sign In <ShieldCheck className="w-4 h-4" />
+              </>
             ) : (
               <>
                 Sign In <ArrowRight className="w-4 h-4" />

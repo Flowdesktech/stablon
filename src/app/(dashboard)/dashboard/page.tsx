@@ -1,12 +1,14 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { useAuth } from "@/components/auth-provider";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useWallets, useTransfers } from "@/hooks/use-bridge";
+import { useWallets, useTransfers, useCustomer, createBridgeCustomer } from "@/hooks/use-bridge";
+import { toast } from "@/components/ui/toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { BridgeWallet, BridgeTransfer } from "@/types/bridge";
 import {
@@ -21,6 +23,8 @@ import {
   Clock,
   ChevronRight,
   Inbox,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 const quickActions = [
@@ -60,12 +64,66 @@ function transferType(t: BridgeTransfer) {
   return "swap";
 }
 
+function AccountSetupBanner() {
+  const { customer, isLoading, mutate: refreshCustomer } = useCustomer();
+  const { mutate: refreshWallets } = useWallets();
+  const { mutate: refreshTransfers } = useTransfers();
+  const [linking, setLinking] = useState(false);
+
+  if (isLoading || customer?.id) return null;
+
+  async function handleLink() {
+    setLinking(true);
+    try {
+      await createBridgeCustomer();
+      await Promise.all([refreshCustomer(), refreshWallets(), refreshTransfers()]);
+      toast({
+        variant: "success",
+        title: "Account set up",
+        description: "Your account is linked. Complete verification to unlock all features.",
+      });
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Couldn't set up your account",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  return (
+    <Card className="relative overflow-hidden border-purple-500/20">
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/15 to-blue-600/10" />
+      <CardContent className="relative p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-semibold text-white">Finish setting up your account</p>
+          <p className="text-sm text-white/60 mt-1">
+            Link your account to enable deposits, withdrawals, swaps, and your card. This only takes a moment.
+          </p>
+        </div>
+        <Button onClick={handleLink} disabled={linking} className="shrink-0">
+          {linking ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Setting up...</>
+          ) : (
+            "Set up account"
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { user, loading: authLoading } = useAuth();
   const { wallets, isLoading: walletsLoading } = useWallets();
   const { transfers, isLoading: transfersLoading } = useTransfers();
 
-  if (sessionStatus === "loading" || walletsLoading) {
+  if (authLoading || walletsLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="skeleton h-8 w-64" />
@@ -80,7 +138,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!session) redirect("/login");
+  if (!user) redirect("/login");
 
   const balances = aggregateBalances(wallets);
   const totalUsd = balances.reduce((sum, b) => {
@@ -94,10 +152,12 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-white">
-          Welcome back, {session.user?.name || "there"}
+          Welcome back, {user.displayName || "there"}
         </h1>
         <p className="text-white/50 mt-1">Here&apos;s your financial overview</p>
       </div>
+
+      <AccountSetupBanner />
 
       {/* Total balance */}
       <Card className="relative overflow-hidden">

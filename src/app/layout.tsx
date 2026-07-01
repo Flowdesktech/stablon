@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wayex - Global Stablecoin Platform",
+  title: "Stablon - Global Stablecoin Platform",
   description: "One App. One Card. Everything Money. Bank globally, earn automatically, spend stablecoins like cash.",
 };
 

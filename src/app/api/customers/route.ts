@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/api-guards";
+import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = (session.user as Record<string, unknown>).id as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const guard = await requireUser();
+    if ("error" in guard) return guard.error;
+    const { user } = guard;
 
     if (user.bridgeCustomerId) {
       const customer = await bridge.getCustomer(user.bridgeCustomerId);
@@ -28,10 +20,7 @@ export async function POST(req: Request) {
       type: "individual",
     });
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { bridgeCustomerId: customer.id },
-    });
+    await updateUserDoc(user.uid, { bridgeCustomerId: customer.id });
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
@@ -42,15 +31,12 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await requireUser();
+    if ("error" in guard) return guard.error;
+    const { user } = guard;
 
-    const userId = (session.user as Record<string, unknown>).id as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.bridgeCustomerId) {
-      return NextResponse.json({ id: null, kyc_status: user?.kycStatus || "none" });
+    if (!user.bridgeCustomerId) {
+      return NextResponse.json({ id: null, kyc_status: user.kycStatus || "none" });
     }
 
     const customer = await bridge.getCustomer(user.bridgeCustomerId);

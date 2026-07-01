@@ -14,7 +14,9 @@ export interface BridgeKYCLink {
   customer_id: string;
   kyc_link: string;
   tos_link: string;
-  status: string;
+  status?: string;
+  kyc_status?: string;
+  tos_status?: string;
   created_at: string;
 }
 

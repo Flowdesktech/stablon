@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 
 export async function GET(
@@ -8,10 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ cardId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await requireUser();
+    if ("error" in guard) return guard.error;
 
     const { cardId } = await params;
     const transactions = await bridge.getCardTransactions(cardId);

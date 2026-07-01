@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCustomer, startKYC } from "@/hooks/use-bridge";
+import { toast } from "@/components/ui/toast";
+import { SecuritySection } from "@/components/settings/security-section";
 import {
   User,
   Shield,
@@ -17,7 +19,6 @@ import {
   Mail,
   Lock,
   Bell,
-  Smartphone,
   Globe,
   Loader2,
 } from "lucide-react";
@@ -33,11 +34,11 @@ const kycStatusConfig: Record<string, { label: string; variant: "default" | "suc
 };
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const { customer, isLoading: customerLoading, mutate: refreshCustomer } = useCustomer();
   const [startingKyc, setStartingKyc] = useState(false);
 
-  const kycStatus: KYCStatus = customer?.kyc_status || (session?.user as Record<string, unknown>)?.kycStatus as KYCStatus || "not_started";
+  const kycStatus: KYCStatus = (customer?.kyc_status as KYCStatus) || "not_started";
   const statusConfig = kycStatusConfig[kycStatus] || kycStatusConfig.not_started;
 
   async function handleStartKYC() {
@@ -46,9 +47,24 @@ export default function SettingsPage() {
       const result = await startKYC();
       if (result?.kyc_link) {
         window.open(result.kyc_link, "_blank");
+        toast({
+          variant: "info",
+          title: "Verification started",
+          description: "Complete the steps in the new tab, then return here to check your status.",
+        });
+      } else {
+        toast({
+          variant: "error",
+          title: "No verification link returned",
+          description: "Please try again in a moment.",
+        });
       }
-    } catch {
-      // graceful
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Couldn't start verification",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     } finally {
       setStartingKyc(false);
       refreshCustomer();
@@ -177,11 +193,11 @@ export default function SettingsPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5">Full Name</label>
-                  <Input defaultValue={session?.user?.name || ""} />
+                  <Input defaultValue={user?.displayName || ""} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5">Email</label>
-                  <Input defaultValue={session?.user?.email || ""} disabled />
+                  <Input defaultValue={user?.email || ""} disabled />
                 </div>
               </div>
               <Button size="sm">Save Changes</Button>
@@ -189,41 +205,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Security */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <Lock className="w-5 h-5 text-amber-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Security</CardTitle>
-                  <CardDescription>Password and two-factor authentication</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                <div className="flex items-center gap-3">
-                  <Lock className="w-4 h-4 text-white/40" />
-                  <div>
-                    <p className="text-sm text-white">Password</p>
-                    <p className="text-xs text-white/40">Last changed: Never</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">Change</Button>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                <div className="flex items-center gap-3">
-                  <Smartphone className="w-4 h-4 text-white/40" />
-                  <div>
-                    <p className="text-sm text-white">Two-Factor Auth</p>
-                    <p className="text-xs text-white/40">Not enabled</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">Enable</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <SecuritySection />
         </div>
 
         {/* Sidebar info */}
@@ -234,7 +216,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { icon: Mail, label: "Email", value: session?.user?.email || "—" },
+                { icon: Mail, label: "Email", value: user?.email || "—" },
                 { icon: Globe, label: "Region", value: "Global" },
                 { icon: Shield, label: "KYC Level", value: kycStatus === "approved" ? "Full" : "None" },
                 { icon: Bell, label: "Notifications", value: "Enabled" },

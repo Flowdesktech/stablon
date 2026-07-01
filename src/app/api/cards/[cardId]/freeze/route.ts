@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 
 export async function POST(
@@ -8,10 +7,8 @@ export async function POST(
   { params }: { params: Promise<{ cardId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await requireVerifiedCustomer();
+    if ("error" in guard) return guard.error;
 
     const { cardId } = await params;
     await bridge.freezeCard(cardId);

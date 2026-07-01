@@ -1,6 +1,15 @@
 "use client";
 
 import useSWR, { mutate as globalMutate } from "swr";
+import { toast } from "@/components/ui/toast";
+
+function notifyError(title: string, err: unknown) {
+  toast({
+    variant: "error",
+    title,
+    description: err instanceof Error ? err.message : "Please try again.",
+  });
+}
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -26,6 +35,12 @@ export async function createBridgeCustomer() {
   return data;
 }
 
+export function useKycStatus() {
+  const { customer, isLoading } = useCustomer();
+  const status: string = customer?.kyc_status ?? "none";
+  return { status, isApproved: status === "approved", isLoading };
+}
+
 export function useKYCLink() {
   const { data, error, isLoading, mutate } = useSWR("/api/kyc", fetcher);
   return { kycLink: data, error, isLoading, mutate };
@@ -47,15 +62,21 @@ export function useWallets() {
 }
 
 export async function createWallet(network: string) {
-  const res = await fetch("/api/wallets", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ network }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  globalMutate("/api/wallets");
-  return data;
+  try {
+    const res = await fetch("/api/wallets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ network }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/wallets");
+    toast({ variant: "success", title: "Wallet created", description: `Your ${network} wallet is ready.` });
+    return data;
+  } catch (err) {
+    notifyError("Couldn't create wallet", err);
+    throw err;
+  }
 }
 
 // ─── Transfers ───────────────────────────────────────────────
@@ -66,15 +87,21 @@ export function useTransfers() {
 }
 
 export async function createTransfer(body: Record<string, unknown>) {
-  const res = await fetch("/api/transfers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  globalMutate("/api/transfers");
-  return data;
+  try {
+    const res = await fetch("/api/transfers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/transfers");
+    toast({ variant: "success", title: "Transfer initiated", description: "Track its progress in your activity." });
+    return data;
+  } catch (err) {
+    notifyError("Transfer failed", err);
+    throw err;
+  }
 }
 
 // ─── Virtual Accounts ────────────────────────────────────────
@@ -85,15 +112,21 @@ export function useVirtualAccounts() {
 }
 
 export async function createVirtualAccount(currency: string) {
-  const res = await fetch("/api/accounts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ currency }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  globalMutate("/api/accounts");
-  return data;
+  try {
+    const res = await fetch("/api/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currency }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/accounts");
+    toast({ variant: "success", title: "Account created", description: `Your ${currency.toUpperCase()} account is ready.` });
+    return data;
+  } catch (err) {
+    notifyError("Couldn't create account", err);
+    throw err;
+  }
 }
 
 // ─── External Accounts (bank accounts for withdrawal) ────────
@@ -104,15 +137,21 @@ export function useExternalAccounts() {
 }
 
 export async function addExternalAccount(body: Record<string, unknown>) {
-  const res = await fetch("/api/external-accounts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  globalMutate("/api/external-accounts");
-  return data;
+  try {
+    const res = await fetch("/api/external-accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/external-accounts");
+    toast({ variant: "success", title: "Bank account added", description: "You can now withdraw to this account." });
+    return data;
+  } catch (err) {
+    notifyError("Couldn't add bank account", err);
+    throw err;
+  }
 }
 
 // ─── Cards ───────────────────────────────────────────────────
@@ -123,15 +162,21 @@ export function useCards() {
 }
 
 export async function provisionCard(settlementCurrency = "usd") {
-  const res = await fetch("/api/cards", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ settlement_currency: settlementCurrency }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
-  globalMutate("/api/cards");
-  return data;
+  try {
+    const res = await fetch("/api/cards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settlement_currency: settlementCurrency }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/cards");
+    toast({ variant: "success", title: "Card issued", description: "Your new card is ready to use." });
+    return data;
+  } catch (err) {
+    notifyError("Couldn't issue card", err);
+    throw err;
+  }
 }
 
 export function useCardTransactions(cardAccountId: string | undefined) {
@@ -143,14 +188,24 @@ export function useCardTransactions(cardAccountId: string | undefined) {
 }
 
 export async function toggleCardFreeze(cardAccountId: string, freeze: boolean) {
-  const res = await fetch(`/api/cards/${cardAccountId}/${freeze ? "freeze" : "unfreeze"}`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error);
+  try {
+    const res = await fetch(`/api/cards/${cardAccountId}/${freeze ? "freeze" : "unfreeze"}`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error);
+    }
+    globalMutate("/api/cards");
+    toast({
+      variant: freeze ? "info" : "success",
+      title: freeze ? "Card frozen" : "Card unfrozen",
+      description: freeze ? "Transactions are now blocked." : "Your card is active again.",
+    });
+  } catch (err) {
+    notifyError(freeze ? "Couldn't freeze card" : "Couldn't unfreeze card", err);
+    throw err;
   }
-  globalMutate("/api/cards");
 }
 
 // ─── Exchange Rates ──────────────────────────────────────────

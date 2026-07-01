@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await requireUser();
+    if ("error" in guard) return guard.error;
+    const { user } = guard;
 
-    const userId = (session.user as Record<string, unknown>).id as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.bridgeCustomerId) {
+    if (!user.bridgeCustomerId) {
       return NextResponse.json({ data: [] });
     }
 
@@ -27,19 +22,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = (session.user as Record<string, unknown>).id as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.bridgeCustomerId) {
-      return NextResponse.json({ error: "No Bridge customer linked" }, { status: 400 });
-    }
+    const guard = await requireVerifiedCustomer();
+    if ("error" in guard) return guard.error;
+    const { user } = guard;
 
     const { currency } = await req.json();
-    const account = await bridge.createVirtualAccount(user.bridgeCustomerId, { currency });
+    const account = await bridge.createVirtualAccount(user.bridgeCustomerId!, { currency });
     return NextResponse.json(account, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal error";

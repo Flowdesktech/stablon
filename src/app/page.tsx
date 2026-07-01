@@ -25,7 +25,7 @@ export default function LandingPage() {
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
             <span className="text-white font-bold">W</span>
           </div>
-          <span className="text-xl font-bold text-white">Wayex</span>
+          <span className="text-xl font-bold text-white">Stablon</span>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/login">
@@ -172,7 +172,7 @@ export default function LandingPage() {
       <section className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 pb-20">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to upgrade your money?</h2>
-          <p className="text-white/50 mb-8">Join users in 160+ countries who bank globally with Wayex.</p>
+          <p className="text-white/50 mb-8">Join users in 160+ countries who bank globally with Stablon.</p>
           <Link href="/register">
             <Button size="lg">
               Get Started Free <ArrowRight className="w-4 h-4 ml-1" />
@@ -188,7 +188,7 @@ export default function LandingPage() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
               <span className="text-white font-bold text-xs">W</span>
             </div>
-            <span className="text-sm text-white/50">Wayex Platform</span>
+            <span className="text-sm text-white/50">Stablon Platform</span>
           </div>
           <p className="text-xs text-white/30">
             Built with Bridge.xyz stablecoin infrastructure. Demo application.

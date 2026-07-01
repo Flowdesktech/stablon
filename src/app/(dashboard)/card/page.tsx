@@ -61,7 +61,7 @@ export default function CardPage() {
       <div className="space-y-8 animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-          <p className="text-white/50 mt-1">Manage your Wayex Visa card</p>
+          <p className="text-white/50 mt-1">Manage your Stablon Visa card</p>
         </div>
         <div className="skeleton h-64 max-w-md rounded-2xl" />
       </div>
@@ -81,7 +81,7 @@ export default function CardPage() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center mx-auto mb-6">
                 <CreditCard className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Get Your Wayex Card</h2>
+              <h2 className="text-xl font-bold text-white mb-2">Get Your Stablon Card</h2>
               <p className="text-white/50 text-sm mb-6">
                 Spend stablecoins like cash at 200M+ merchants worldwide.
                 Free digital card with Apple Pay and Google Pay support.
@@ -113,7 +113,7 @@ export default function CardPage() {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-        <p className="text-white/50 mt-1">Manage your Wayex Visa card</p>
+        <p className="text-white/50 mt-1">Manage your Stablon Visa card</p>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
@@ -125,7 +125,7 @@ export default function CardPage() {
                   <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
                     <span className="text-white font-bold text-sm">W</span>
                   </div>
-                  <span className="text-white/80 text-sm font-medium">Wayex</span>
+                  <span className="text-white/80 text-sm font-medium">Stablon</span>
                 </div>
                 {frozen && <Badge variant="warning">Frozen</Badge>}
               </div>

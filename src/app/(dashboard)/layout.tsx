@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/layout/sidebar";
+import { FeatureGuard } from "@/components/layout/feature-guard";
 
 export default function DashboardLayout({
   children,
@@ -10,7 +11,7 @@ export default function DashboardLayout({
       <Sidebar />
       <main className="flex-1 min-w-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
-          {children}
+          <FeatureGuard>{children}</FeatureGuard>
         </div>
       </main>
     </div>

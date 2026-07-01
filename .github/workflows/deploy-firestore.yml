@@ -1,0 +1,44 @@
+name: Deploy Firestore rules & indexes
+
+# The Next.js app itself is hosted on Vercel. This workflow only deploys the
+# Firebase backend artifacts that live in this repo — the locked-down Firestore
+# security rules and indexes — whenever they change on the main branch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
+      - firebase.json
+      - .github/workflows/deploy-firestore.yml
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # firebase-tools authenticates via a service account key (JSON) exposed
+      # through GOOGLE_APPLICATION_CREDENTIALS. Writing it from an env var (not
+      # inline) avoids shell-quoting issues with the JSON contents.
+      - name: Write service account credentials
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Firestore rules & indexes
+        run: >-
+          npx -y firebase-tools@latest deploy
+          --only firestore
+          --project "$FIREBASE_PROJECT_ID"
+          --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/service-account.json
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
