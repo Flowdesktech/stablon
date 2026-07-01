@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,6 +215,14 @@ function EnableTwoFactor({
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [codesCopied, setCodesCopied] = useState(false);
 
+  // The dialog is opened via the parent's controlled `open` prop, so Radix's
+  // onOpenChange never fires on open — kick off enrollment here so the QR code
+  // actually loads instead of spinning forever.
+  useEffect(() => {
+    if (open && !qrCode && !recoveryCodes && !loading) begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   function reset() {
     setQrCode(null);
     setSecret("");
@@ -290,7 +298,6 @@ function EnableTwoFactor({
         // Prevent dismissing while recovery codes are shown so they aren't lost.
         if (!o && recoveryCodes) return;
         onOpenChange(o);
-        if (o && !qrCode && !loading) begin();
         if (!o) reset();
       }}
     >

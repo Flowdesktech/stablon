@@ -23,7 +23,7 @@ export default function LandingPage() {
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 py-5 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-            <span className="text-white font-bold">W</span>
+            <span className="text-white font-bold">S</span>
           </div>
           <span className="text-xl font-bold text-white">Stablon</span>
         </div>
@@ -186,7 +186,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">W</span>
+              <span className="text-white font-bold text-xs">S</span>
             </div>
             <span className="text-sm text-white/50">Stablon Platform</span>
           </div>

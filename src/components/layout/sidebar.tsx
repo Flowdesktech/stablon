@@ -49,7 +49,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-          <span className="text-white font-bold">W</span>
+          <span className="text-white font-bold">S</span>
         </div>
         <span className="text-lg font-bold text-white">Stablon</span>
       </div>
