@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signOut,
+  sendEmailVerification,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword as firebaseUpdatePassword,
@@ -17,7 +18,12 @@ export type SessionResult =
   | { ok: true }
   | {
       ok: false;
-      code: "2FA_REQUIRED" | "2FA_INVALID" | "INVALID_CREDENTIALS" | "ERROR";
+      code:
+        | "2FA_REQUIRED"
+        | "2FA_INVALID"
+        | "INVALID_CREDENTIALS"
+        | "EMAIL_UNVERIFIED"
+        | "ERROR";
       message?: string;
     };
 
@@ -44,6 +50,12 @@ export async function signInWithPassword(
     return { ok: false, code: "INVALID_CREDENTIALS" };
   }
 
+  // Gate on a verified email before we ever mint a session cookie. The Firebase
+  // client stays signed in so the /verify-email page can resend the email.
+  if (!cred.user.emailVerified) {
+    return { ok: false, code: "EMAIL_UNVERIFIED" };
+  }
+
   const idToken = await cred.user.getIdToken();
   const res = await establishSession(idToken, totp);
   if (res.ok) return { ok: true };
@@ -51,9 +63,12 @@ export async function signInWithPassword(
   const data = await res.json().catch(() => ({}));
   if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
   if (data.error === "2FA_INVALID") return { ok: false, code: "2FA_INVALID" };
+  if (data.error === "EMAIL_UNVERIFIED") return { ok: false, code: "EMAIL_UNVERIFIED" };
   return { ok: false, code: "ERROR", message: data.error };
 }
 
+// Creates the Firebase account and sends a verification email. No session cookie
+// is issued yet — the user must confirm their email first (see completeVerifiedSignIn).
 export async function registerWithPassword(
   name: string,
   email: string,
@@ -72,25 +87,68 @@ export async function registerWithPassword(
     try {
       await updateProfile(cred.user, { displayName: name });
     } catch {
-      // Non-fatal: the name is also persisted server-side below.
+      // Non-fatal: the name also rides along in the ID token / is persisted later.
     }
   }
 
-  const idToken = await cred.user.getIdToken();
-  const res = await establishSession(idToken);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    return { ok: false, code: "ERROR", message: data.error || "Could not establish session" };
+  try {
+    await sendEmailVerification(cred.user);
+  } catch (err) {
+    // Non-fatal: the verify page offers a resend button.
+    console.error("[auth] failed to send verification email:", err);
   }
 
-  // Persist the profile + best-effort link a Bridge customer (server-side).
-  await fetch("/api/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  }).catch(() => {});
-
   return { ok: true };
+}
+
+// Resends the verification email to the currently signed-in (unverified) user.
+export async function resendVerificationEmail(): Promise<void> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    throw new Error("Your session expired — please sign in again.");
+  }
+  if (user.emailVerified) return;
+
+  try {
+    await sendEmailVerification(user);
+  } catch (err) {
+    if (err instanceof FirebaseError && err.code === "auth/too-many-requests") {
+      throw new Error("Too many attempts. Please wait a minute and try again.");
+    }
+    throw new Error("Could not send the verification email. Please try again.");
+  }
+}
+
+// Called from the /verify-email page. Refreshes the user, and once the email is
+// confirmed, exchanges a fresh ID token (carrying email_verified) for a session
+// cookie and persists the profile / links a Bridge customer.
+export async function completeVerifiedSignIn(): Promise<SessionResult> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    return { ok: false, code: "ERROR", message: "Your session expired — please sign in again." };
+  }
+
+  await user.reload();
+  if (!user.emailVerified) {
+    return { ok: false, code: "EMAIL_UNVERIFIED" };
+  }
+
+  // Force-refresh so the token reflects the freshly verified email claim.
+  const idToken = await user.getIdToken(true);
+  const res = await establishSession(idToken);
+  if (res.ok) {
+    await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: user.displayName ?? "" }),
+    }).catch(() => {});
+    return { ok: true };
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
+  if (data.error === "EMAIL_UNVERIFIED") return { ok: false, code: "EMAIL_UNVERIFIED" };
+  return { ok: false, code: "ERROR", message: data.error };
 }
 
 export async function signOutUser(): Promise<void> {

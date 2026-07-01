@@ -56,9 +56,8 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
+  // Favicon + apple touch icon are generated from src/app/icon.tsx and
+  // src/app/apple-icon.tsx (the gradient "S" logo) — no override needed here.
 };
 
 export const viewport: Viewport = {

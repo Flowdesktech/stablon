@@ -29,7 +29,10 @@ export default function LoginPage() {
       return;
     }
 
-    if (res.code === "2FA_REQUIRED") {
+    if (res.code === "EMAIL_UNVERIFIED") {
+      router.push("/verify-email");
+      return;
+    } else if (res.code === "2FA_REQUIRED") {
       setTwoFactorRequired(true);
       setError("");
     } else if (res.code === "2FA_INVALID") {

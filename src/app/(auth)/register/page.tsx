@@ -24,7 +24,7 @@ export default function RegisterPage() {
     try {
       const res = await registerWithPassword(name, email, password);
       if (res.ok) {
-        router.push("/dashboard");
+        router.push("/verify-email");
       } else {
         setError(res.message || "Registration failed");
         setLoading(false);

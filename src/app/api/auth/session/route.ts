@@ -40,6 +40,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Require a verified email before issuing a session cookie. This is the
+    // authoritative server-side gate — the client checks are just for UX.
+    if (!decoded.email_verified) {
+      return NextResponse.json({ error: "EMAIL_UNVERIFIED" }, { status: 403 });
+    }
+
     const user = await ensureUserDoc(decoded.uid, {
       email: decoded.email ?? "",
       name: decoded.name ?? null,
