@@ -25,7 +25,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
     }
 
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    // Token verification failure is an expected client-side condition (bad or
+    // expired token) → 401. Everything after this is server infrastructure and
+    // is treated as a 500 by the outer catch so real config errors surface in
+    // the deployment logs instead of masquerading as "invalid credentials".
+    let decoded;
+    try {
+      decoded = await getAdminAuth().verifyIdToken(idToken);
+    } catch (err) {
+      console.error("[auth/session] ID token verification failed:", err);
+      return NextResponse.json(
+        { error: "Invalid or expired sign-in. Please try again." },
+        { status: 401 }
+      );
+    }
+
     const user = await ensureUserDoc(decoded.uid, {
       email: decoded.email ?? "",
       name: decoded.name ?? null,
@@ -69,8 +83,15 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+  } catch (err) {
+    // Config/infrastructure failures (missing FIREBASE_* admin credentials,
+    // Firestore/createSessionCookie errors). Logged so it shows in Vercel's
+    // runtime logs, and returned as 500 so the client stops calling it "auth".
+    console.error("[auth/session] unexpected server error:", err);
+    return NextResponse.json(
+      { error: "Server error while establishing session" },
+      { status: 500 }
+    );
   }
 }
 
