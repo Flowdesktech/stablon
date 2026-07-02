@@ -1,4 +1,5 @@
 import type {
+  AppKycStatus,
   BridgeCustomer,
   BridgeKYCLink,
   BridgeWallet,
@@ -80,6 +81,31 @@ export async function getCustomer(
   customerId: string
 ): Promise<BridgeCustomer> {
   return bridgeFetch<BridgeCustomer>(`/customers/${customerId}`);
+}
+
+// Bridge exposes a granular `status` on the customer (and `active` = approved).
+// Collapse it into the app's KYC vocabulary. Falls back to a legacy `kyc_status`
+// field if Bridge ever returns one.
+export function deriveKycStatus(
+  customer: { status?: string; kyc_status?: string } | null | undefined
+): AppKycStatus {
+  const raw = customer?.status ?? customer?.kyc_status;
+  switch (raw) {
+    case "active":
+    case "approved":
+      return "approved";
+    case "rejected":
+    case "offboarded":
+      return "rejected";
+    case "under_review":
+    case "pending":
+    case "awaiting_questionnaire":
+    case "awaiting_ubo":
+    case "paused":
+      return "pending";
+    default:
+      return "not_started";
+  }
 }
 
 export async function listCustomers(): Promise<{ data: BridgeCustomer[] }> {

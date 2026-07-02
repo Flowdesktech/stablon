@@ -1,10 +1,40 @@
+// Raw customer status as returned by Bridge's /customers endpoint.
+export type BridgeCustomerStatus =
+  | "active"
+  | "under_review"
+  | "rejected"
+  | "incomplete"
+  | "not_started"
+  | "awaiting_questionnaire"
+  | "awaiting_ubo"
+  | "paused"
+  | "offboarded";
+
+// App-normalized KYC status the UI understands.
+export type AppKycStatus = "not_started" | "pending" | "approved" | "rejected";
+
+export interface BridgeRejectionReason {
+  reason: string;
+  developer_reason?: string;
+  created_at?: string | null;
+}
+
 export interface BridgeCustomer {
   id: string;
-  full_name: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   type: "individual" | "business";
-  kyc_status: "not_started" | "pending" | "approved" | "rejected" | "incomplete";
-  rejection_reasons?: string[];
+  // Bridge's own field. `active` means KYC approved.
+  status?: BridgeCustomerStatus;
+  // Derived by our API from `status` so the client has a consistent value.
+  kyc_status?: AppKycStatus;
+  rejection_reasons?: BridgeRejectionReason[];
+  requirements_due?: string[];
+  future_requirements_due?: string[];
+  capabilities?: Record<string, string>;
+  has_accepted_terms_of_service?: boolean;
   created_at: string;
   updated_at: string;
 }

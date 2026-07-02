@@ -3,6 +3,21 @@ import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
 
+// Returns the customer to the client with a normalized `kyc_status`, and keeps
+// the Firestore `kycStatus` in sync so server-side guards stay accurate.
+async function respondWithCustomer(
+  uid: string,
+  storedStatus: string,
+  customer: Awaited<ReturnType<typeof bridge.getCustomer>>,
+  init?: { status?: number }
+) {
+  const kyc_status = bridge.deriveKycStatus(customer);
+  if (kyc_status !== storedStatus) {
+    await updateUserDoc(uid, { kycStatus: kyc_status });
+  }
+  return NextResponse.json({ ...customer, kyc_status }, init);
+}
+
 export async function POST() {
   try {
     const guard = await requireUser();
@@ -11,7 +26,7 @@ export async function POST() {
 
     if (user.bridgeCustomerId) {
       const customer = await bridge.getCustomer(user.bridgeCustomerId);
-      return NextResponse.json(customer);
+      return respondWithCustomer(user.uid, user.kycStatus, customer);
     }
 
     const customer = await bridge.createCustomer({
@@ -22,7 +37,7 @@ export async function POST() {
 
     await updateUserDoc(user.uid, { bridgeCustomerId: customer.id });
 
-    return NextResponse.json(customer, { status: 201 });
+    return respondWithCustomer(user.uid, user.kycStatus, customer, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -40,7 +55,7 @@ export async function GET() {
     }
 
     const customer = await bridge.getCustomer(user.bridgeCustomerId);
-    return NextResponse.json(customer);
+    return respondWithCustomer(user.uid, user.kycStatus, customer);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });

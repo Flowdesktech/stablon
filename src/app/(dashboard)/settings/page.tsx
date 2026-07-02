@@ -41,6 +41,18 @@ export default function SettingsPage() {
   const kycStatus: KYCStatus = (customer?.kyc_status as KYCStatus) || "not_started";
   const statusConfig = kycStatusConfig[kycStatus] || kycStatusConfig.not_started;
 
+  // Bridge returns rejection_reasons as objects ({ reason, developer_reason }).
+  // Show the user-facing `reason`, de-duplicated.
+  const rejectionReasons: string[] = Array.isArray(customer?.rejection_reasons)
+    ? Array.from(
+        new Set(
+          (customer.rejection_reasons as Array<string | { reason?: string }>)
+            .map((r) => (typeof r === "string" ? r : r?.reason))
+            .filter((r): r is string => Boolean(r))
+        )
+      )
+    : [];
+
   async function handleStartKYC() {
     setStartingKyc(true);
     try {
@@ -163,9 +175,19 @@ export default function SettingsPage() {
                     <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-red-300">Verification Failed</p>
-                      <p className="text-xs text-red-300/60 mt-1">
-                        Please try again with clearer documents or contact support.
-                      </p>
+                      {rejectionReasons.length > 0 ? (
+                        <ul className="mt-1 space-y-1 list-disc list-inside">
+                          {rejectionReasons.map((reason) => (
+                            <li key={reason} className="text-xs text-red-300/70">
+                              {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-red-300/60 mt-1">
+                          Please try again with clearer documents or contact support.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Button onClick={handleStartKYC} disabled={startingKyc}>
