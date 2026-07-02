@@ -55,7 +55,9 @@ export interface BridgeKYCLink {
 export interface BridgeWallet {
   id: string;
   customer_id: string;
+  // Bridge returns this as `chain`; normalized to `network` in lib/bridge.ts.
   network: string;
+  chain?: string;
   address: string;
   balances: Record<string, string>;
   created_at: string;
@@ -98,9 +100,31 @@ export interface TransferReceipt {
 export interface BridgeVirtualAccount {
   id: string;
   customer_id: string;
-  currency: string;
-  status: "active" | "inactive";
-  account_details: {
+  // Bridge reports "activated"/"deactivated"; the API layer normalizes these.
+  status: string;
+  currency?: string;
+  // Bank details customers deposit fiat into (Bridge's real response shape).
+  source_deposit_instructions?: {
+    currency?: string;
+    bank_name?: string;
+    bank_address?: string;
+    bank_routing_number?: string;
+    bank_account_number?: string;
+    bank_beneficiary_name?: string;
+    bank_beneficiary_address?: string;
+    iban?: string;
+    bic?: string;
+    payment_rail?: string;
+    payment_rails?: string[];
+  };
+  destination?: {
+    currency?: string;
+    payment_rail?: string;
+    address?: string;
+    bridge_wallet_id?: string;
+  };
+  // Normalized shape returned by our /api/accounts route for the UI.
+  account_details?: {
     bank_name?: string;
     account_number?: string;
     routing_number?: string;
@@ -109,7 +133,7 @@ export interface BridgeVirtualAccount {
     clabe?: string;
     pix_key?: string;
   };
-  source_deposit_instructions: string;
+  developer_fee_percent?: string;
   created_at: string;
 }
 

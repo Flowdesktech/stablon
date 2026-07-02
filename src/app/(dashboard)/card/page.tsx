@@ -19,10 +19,11 @@ import {
   Shield,
   Loader2,
   Inbox,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function CardPage() {
-  const { cards, isLoading, mutate } = useCards();
+  const { cards, error, isLoading, mutate } = useCards();
   const [showNumber, setShowNumber] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
   const [freezing, setFreezing] = useState(false);
@@ -64,6 +65,31 @@ export default function CardPage() {
           <p className="text-white/50 mt-1">Manage your Stablon Visa card</p>
         </div>
         <div className="skeleton h-64 max-w-md rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Visa Card</h1>
+          <p className="text-white/50 mt-1">Spend your stablecoins anywhere Visa is accepted</p>
+        </div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="max-w-md w-full text-center border-amber-500/20">
+            <CardContent className="p-8 flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+                <AlertTriangle className="w-7 h-7 text-amber-300" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Cards unavailable</h2>
+              <p className="text-sm text-white/60">{error.message}</p>
+              <Button variant="outline" onClick={() => mutate()}>
+                Try again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

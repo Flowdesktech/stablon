@@ -34,6 +34,18 @@ export function isBridgeNotFound(error: unknown): boolean {
   return error instanceof BridgeError && error.status === 404;
 }
 
+// Extracts Bridge's human-readable `message` from an error, falling back to the
+// generic error text. Avoids leaking the raw `Bridge API 401: {json}` blob.
+export function bridgeErrorMessage(error: unknown): string {
+  if (error instanceof BridgeError) {
+    const body = error.body as { message?: string } | undefined;
+    if (body && typeof body.message === "string" && body.message.trim()) {
+      return body.message;
+    }
+  }
+  return error instanceof Error ? error.message : "Internal error";
+}
+
 async function bridgeFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -170,22 +182,34 @@ export async function getCustomerTosLink(
 
 // ─── Wallets ─────────────────────────────────────────────────
 
+// Bridge's wallet API speaks `chain`; the rest of the app uses `network`, so we
+// translate on the way in and normalize `chain` → `network` on the way out.
+function normalizeWallet(wallet: BridgeWallet & { chain?: string }): BridgeWallet {
+  return {
+    ...wallet,
+    network: wallet.network ?? wallet.chain ?? "",
+    balances: wallet.balances ?? {},
+  };
+}
+
 export async function createWallet(
   customerId: string,
   data: { network: string }
 ): Promise<BridgeWallet> {
-  return bridgeFetch<BridgeWallet>(
+  const wallet = await bridgeFetch<BridgeWallet>(
     `/customers/${customerId}/wallets`,
-    { method: "POST", body: JSON.stringify(data) }
+    { method: "POST", body: JSON.stringify({ chain: data.network }) }
   );
+  return normalizeWallet(wallet);
 }
 
 export async function getWallets(
   customerId: string
 ): Promise<{ data: BridgeWallet[] }> {
-  return bridgeFetch<{ data: BridgeWallet[] }>(
+  const res = await bridgeFetch<{ data: BridgeWallet[] }>(
     `/customers/${customerId}/wallets`
   );
+  return { data: (res.data ?? []).map(normalizeWallet) };
 }
 
 export async function getWallet(walletId: string): Promise<BridgeWallet> {
@@ -249,9 +273,21 @@ export async function listTransfers(
 
 // ─── Virtual Accounts ────────────────────────────────────────
 
+// A virtual account is a permanent fiat deposit account (bank details / IBAN)
+// that auto-converts incoming fiat into stablecoin and delivers it to the given
+// destination — so both `source` and `destination` are required by Bridge.
 export async function createVirtualAccount(
   customerId: string,
-  data: { currency: string }
+  data: {
+    source: { currency: string };
+    destination: {
+      payment_rail: string;
+      currency: string;
+      address?: string;
+      bridge_wallet_id?: string;
+    };
+    developer_fee_percent?: string;
+  }
 ): Promise<BridgeVirtualAccount> {
   return bridgeFetch<BridgeVirtualAccount>(
     `/customers/${customerId}/virtual_accounts`,

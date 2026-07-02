@@ -15,8 +15,8 @@ export async function GET() {
     const cards = await bridge.getCardAccounts(user.bridgeCustomerId);
     return NextResponse.json(cards);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = error instanceof bridge.BridgeError ? error.status : 500;
+    return NextResponse.json({ error: bridge.bridgeErrorMessage(error) }, { status });
   }
 }
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const card = await bridge.provisionCard(user.bridgeCustomerId!, body);
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = error instanceof bridge.BridgeError ? error.status : 500;
+    return NextResponse.json({ error: bridge.bridgeErrorMessage(error) }, { status });
   }
 }

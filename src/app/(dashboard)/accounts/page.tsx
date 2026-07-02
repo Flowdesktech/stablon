@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { DESTINATION_CHAINS, getChain } from "@/lib/bridge-chains";
 import { useVirtualAccounts, createVirtualAccount } from "@/hooks/use-bridge";
 import type { BridgeVirtualAccount } from "@/types/bridge";
 import {
@@ -49,17 +51,37 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export default function AccountsPage() {
   const { accounts, isLoading, mutate } = useVirtualAccounts();
   const [creating, setCreating] = useState(false);
-  const [creatingCurrency, setCreatingCurrency] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [fiatCurrency, setFiatCurrency] = useState("usd");
+  const [chainId, setChainId] = useState(DESTINATION_CHAINS[0].id);
+  const [coin, setCoin] = useState(DESTINATION_CHAINS[0].coins[0]);
+  const [destinationAddress, setDestinationAddress] = useState("");
 
-  async function handleCreate(currency: string) {
-    setCreatingCurrency(currency);
+  const selectedChain = getChain(chainId) ?? DESTINATION_CHAINS[0];
+
+  function handleChainChange(id: string) {
+    setChainId(id);
+    const next = getChain(id);
+    // Reset coin to a value the newly selected chain actually supports.
+    if (next && !next.coins.includes(coin)) setCoin(next.coins[0]);
+  }
+
+  async function handleCreate() {
+    if (!destinationAddress.trim() || submitting) return;
+    setSubmitting(true);
     try {
-      await createVirtualAccount(currency);
+      await createVirtualAccount({
+        currency: fiatCurrency,
+        destinationAddress,
+        destinationNetwork: chainId,
+        destinationCurrency: coin,
+      });
       setCreating(false);
+      setDestinationAddress("");
     } catch {
-      // API will fail without a real Bridge key -- handled gracefully
+      // Errors are surfaced via toast in the hook.
     } finally {
-      setCreatingCurrency(null);
+      setSubmitting(false);
       mutate();
     }
   }
@@ -80,29 +102,93 @@ export default function AccountsPage() {
         <Card className="border-purple-500/30">
           <CardHeader>
             <CardTitle>Create Virtual Account</CardTitle>
-            <CardDescription>Choose a currency for your new global account</CardDescription>
+            <CardDescription>
+              Incoming fiat is auto-converted to your chosen stablecoin and sent on-chain.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-3">
-              {["usd", "eur"].map((currency) => (
-                <Button
-                  key={currency}
-                  variant="outline"
-                  className="flex-1 h-20 flex-col gap-2"
-                  disabled={creatingCurrency !== null}
-                  onClick={() => handleCreate(currency)}
-                >
-                  {creatingCurrency === currency ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : currency === "usd" ? (
-                    <DollarSign className="w-6 h-6" />
-                  ) : (
-                    <Euro className="w-6 h-6" />
-                  )}
-                  <span>{currency.toUpperCase()} Account</span>
-                </Button>
-              ))}
+          <CardContent className="space-y-5">
+            {/* Fiat account currency */}
+            <div>
+              <label className="text-xs text-white/50">Account currency</label>
+              <div className="flex gap-3 mt-1.5">
+                {["usd", "eur"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setFiatCurrency(c)}
+                    className={`flex-1 flex items-center justify-center gap-2 h-12 rounded-xl border transition-colors cursor-pointer ${
+                      fiatCurrency === c
+                        ? "border-purple-500/50 bg-purple-600/15 text-white"
+                        : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    {c === "usd" ? <DollarSign className="w-4 h-4" /> : <Euro className="w-4 h-4" />}
+                    <span className="font-medium">{c.toUpperCase()}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Destination chain + coin */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-white/50">Destination chain</label>
+                <select
+                  value={chainId}
+                  onChange={(e) => handleChainChange(e.target.value)}
+                  className="mt-1.5 w-full h-11 rounded-xl bg-white/[0.03] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
+                >
+                  {DESTINATION_CHAINS.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-[#14141c]">
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/50">Stablecoin</label>
+                <select
+                  value={coin}
+                  onChange={(e) => setCoin(e.target.value)}
+                  className="mt-1.5 w-full h-11 rounded-xl bg-white/[0.03] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
+                >
+                  {selectedChain.coins.map((c) => (
+                    <option key={c} value={c} className="bg-[#14141c]">
+                      {c.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Destination address */}
+            <div>
+              <label className="text-xs text-white/50">Destination wallet address</label>
+              <Input
+                value={destinationAddress}
+                onChange={(e) => setDestinationAddress(e.target.value)}
+                placeholder={selectedChain.addressHint}
+                className="mt-1.5 font-mono text-sm"
+              />
+              <p className="text-xs text-white/40 mt-1.5">
+                {coin.toUpperCase()} on {selectedChain.label} will be delivered to this address.
+              </p>
+            </div>
+
+            <Button
+              className="w-full"
+              disabled={!destinationAddress.trim() || submitting}
+              onClick={handleCreate}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Creating…
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" /> Create {fiatCurrency.toUpperCase()} Account
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -153,7 +239,7 @@ export default function AccountsPage() {
             );
           })}
         </div>
-      ) : (
+      ) : creating ? null : (
         <Card>
           <CardContent className="p-12 flex flex-col items-center gap-4 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">

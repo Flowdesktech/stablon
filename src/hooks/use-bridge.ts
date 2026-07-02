@@ -111,17 +111,27 @@ export function useVirtualAccounts() {
   return { accounts: data?.data ?? [], error, isLoading, mutate };
 }
 
-export async function createVirtualAccount(currency: string) {
+export async function createVirtualAccount(params: {
+  currency: string;
+  destinationAddress: string;
+  destinationNetwork: string;
+  destinationCurrency: string;
+}) {
   try {
     const res = await fetch("/api/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currency }),
+      body: JSON.stringify({
+        currency: params.currency,
+        destination_address: params.destinationAddress.trim(),
+        destination_network: params.destinationNetwork,
+        destination_currency: params.destinationCurrency,
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     globalMutate("/api/accounts");
-    toast({ variant: "success", title: "Account created", description: `Your ${currency.toUpperCase()} account is ready.` });
+    toast({ variant: "success", title: "Account created", description: `Your ${params.currency.toUpperCase()} account is ready.` });
     return data;
   } catch (err) {
     notifyError("Couldn't create account", err);
