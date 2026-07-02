@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,16 +32,20 @@ function KycTaskRow({
   icon: Icon,
   title,
   desc,
-  href,
   done,
   actionLabel,
+  href,
+  onAction,
+  loading,
 }: {
   icon: typeof Shield;
   title: string;
   desc: string;
-  href?: string | null;
   done?: boolean;
   actionLabel: string;
+  href?: string | null;
+  onAction?: () => void;
+  loading?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
@@ -60,14 +64,22 @@ function KycTaskRow({
       </div>
       {done ? (
         <span className="text-xs text-emerald-400 shrink-0">Done</span>
+      ) : href ? (
+        // Native anchor so the new tab opens on the click itself (no popup block).
+        <Button asChild size="sm" variant="outline">
+          <a href={href} target="_blank" rel="noopener noreferrer">
+            {actionLabel} <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </Button>
       ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!href}
-          onClick={() => href && window.open(href, "_blank", "noopener,noreferrer")}
-        >
-          {actionLabel} <ExternalLink className="w-3.5 h-3.5" />
+        <Button size="sm" variant="outline" onClick={onAction} disabled={loading || !onAction}>
+          {loading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <>
+              {actionLabel} <ExternalLink className="w-3.5 h-3.5" />
+            </>
+          )}
         </Button>
       )}
     </div>
@@ -85,8 +97,9 @@ const kycStatusConfig: Record<string, { label: string; variant: "default" | "suc
 export default function SettingsPage() {
   const { user } = useAuth();
   const { customer, isLoading: customerLoading, mutate: refreshCustomer } = useCustomer();
-  const [startingKyc, setStartingKyc] = useState(false);
   const [links, setLinks] = useState<KycLinks | null>(null);
+  const [loadingLinks, setLoadingLinks] = useState(false);
+  const fetchedRef = useRef(false);
 
   const kycStatus: KYCStatus = (customer?.kyc_status as KYCStatus) || "not_started";
   const statusConfig = kycStatusConfig[kycStatus] || kycStatusConfig.not_started;
@@ -103,8 +116,15 @@ export default function SettingsPage() {
       )
     : [];
 
-  async function handleStartKYC() {
-    setStartingKyc(true);
+  // Derive the task state from the customer so the checklist is the default view.
+  const tosLink: string | null = links?.tos_link ?? customer?.tos_link ?? null;
+  const tosAccepted: boolean =
+    links?.tos_accepted ?? Boolean(customer?.has_accepted_terms_of_service);
+  const needsKyc = ["not_started", "none", "rejected"].includes(kycStatus);
+
+  // Fetch the hosted TOS + KYC links from Bridge. Creates the customer if needed.
+  async function loadLinks(): Promise<KycLinks | null> {
+    setLoadingLinks(true);
     try {
       const result = await startKYC();
       const next: KycLinks = {
@@ -113,63 +133,59 @@ export default function SettingsPage() {
         tos_accepted: Boolean(result?.tos_accepted),
       };
       setLinks(next);
-
-      // Open the first outstanding task automatically (TOS before KYC).
-      const first = !next.tos_accepted && next.tos_link ? next.tos_link : next.kyc_link;
-      if (first) {
-        window.open(first, "_blank", "noopener,noreferrer");
-        toast({
-          variant: "info",
-          title: "Verification started",
-          description: "Complete both tasks in the new tab, then return and refresh your status.",
-        });
-      } else {
-        toast({
-          variant: "error",
-          title: "No verification link returned",
-          description: "Please try again in a moment.",
-        });
-      }
+      return next;
     } catch (err) {
+      fetchedRef.current = false; // allow a retry
       toast({
         variant: "error",
-        title: "Couldn't start verification",
+        title: "Couldn't load verification",
         description: err instanceof Error ? err.message : "Please try again.",
       });
+      return null;
     } finally {
-      setStartingKyc(false);
-      refreshCustomer();
+      setLoadingLinks(false);
     }
   }
 
-  function VerificationTasks() {
-    if (!links) return null;
-    return (
-      <div className="space-y-2">
-        <KycTaskRow
-          icon={FileText}
-          title="Accept Terms of Service"
-          desc="Required before verification can be approved"
-          href={links.tos_link}
-          done={links.tos_accepted}
-          actionLabel="Accept"
-        />
-        <KycTaskRow
-          icon={Shield}
-          title="Verify your identity"
-          desc="Government ID and a quick selfie check"
-          href={links.kyc_link}
-          actionLabel="Verify"
-        />
-        <p className="text-xs text-white/40 pt-1">
-          Finished both?{" "}
-          <button onClick={() => refreshCustomer()} className="text-purple-400 hover:underline">
-            Refresh status
-          </button>
-        </p>
-      </div>
-    );
-  }
+  // Auto-load the verification links once the customer is known and unverified —
+  // no "Start Verification" click required.
+  useEffect(() => {
+    if (!needsKyc || links || fetchedRef.current || customerLoading) return;
+    fetchedRef.current = true;
+    void loadLinks();
+  }, [needsKyc, links, customerLoading]);
+
+  const kycLink: string | null = links?.kyc_link ?? null;
+
+  const verificationTasks = (
+    <div className="space-y-2">
+      <KycTaskRow
+        icon={FileText}
+        title="Accept Terms of Service"
+        desc="Required before verification can be approved"
+        done={tosAccepted}
+        actionLabel="Accept"
+        href={tosLink}
+        onAction={() => loadLinks()}
+        loading={loadingLinks}
+      />
+      <KycTaskRow
+        icon={Shield}
+        title="Verify your identity"
+        desc="Government ID and a quick selfie check"
+        actionLabel="Verify"
+        href={kycLink}
+        onAction={() => loadLinks()}
+        loading={loadingLinks}
+      />
+      <p className="text-xs text-white/40 pt-1">
+        Finished both?{" "}
+        <button onClick={() => refreshCustomer()} className="text-purple-400 hover:underline">
+          Refresh status
+        </button>
+      </p>
+    </div>
+  );
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -210,32 +226,7 @@ export default function SettingsPage() {
                     Complete identity verification to unlock deposits, withdrawals, card access, and more.
                     The process takes about 2 minutes.
                   </p>
-                  {links ? (
-                    <VerificationTasks />
-                  ) : (
-                    <>
-                      <div className="grid sm:grid-cols-3 gap-3">
-                        {[
-                          { step: "1", label: "Personal Info", desc: "Name, address, DOB" },
-                          { step: "2", label: "ID Document", desc: "Passport or ID card" },
-                          { step: "3", label: "Selfie Check", desc: "Quick photo match" },
-                        ].map((s) => (
-                          <div key={s.step} className="flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                            <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-xs text-purple-300 font-bold shrink-0">
-                              {s.step}
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-white">{s.label}</p>
-                              <p className="text-xs text-white/40">{s.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <Button onClick={handleStartKYC} disabled={startingKyc}>
-                        {startingKyc ? <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</> : <>Start Verification <ExternalLink className="w-4 h-4" /></>}
-                      </Button>
-                    </>
-                  )}
+                  {verificationTasks}
                 </div>
               )}
 
@@ -284,13 +275,7 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </div>
-                  {links ? (
-                    <VerificationTasks />
-                  ) : (
-                    <Button onClick={handleStartKYC} disabled={startingKyc}>
-                      {startingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : "Retry Verification"}
-                    </Button>
-                  )}
+                  {verificationTasks}
                 </div>
               )}
             </CardContent>

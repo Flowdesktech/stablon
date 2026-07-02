@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
+import type { BridgeKYCLink } from "@/types/bridge";
 
 // Returns the two hosted links a customer must complete to onboard with Bridge:
 //   1. tos_link  — accept Terms of Service
@@ -25,10 +26,24 @@ export async function POST() {
       await updateUserDoc(user.uid, { bridgeCustomerId: customerId });
     }
 
-    const [kycLink, customer] = await Promise.all([
-      bridge.getCustomerKycLink(customerId, "sepa"),
-      bridge.getCustomer(customerId),
-    ]);
+    const customer = await bridge.getCustomer(customerId);
+
+    // Prefer the existing-customer KYC link; fall back to POST /kyc_links (which
+    // Bridge dedups by email) if that endpoint fails or returns no link, so the
+    // client always gets a usable kyc_link.
+    let kycLink: BridgeKYCLink | null = null;
+    try {
+      kycLink = await bridge.getCustomerKycLink(customerId, "sepa");
+    } catch (err) {
+      console.error("[kyc] getCustomerKycLink failed, falling back to /kyc_links:", err);
+    }
+    if (!kycLink?.kyc_link) {
+      kycLink = await bridge.createKYCLink({
+        full_name: user.name || user.email,
+        email: user.email,
+        type: "individual",
+      });
+    }
 
     const kyc_status = bridge.deriveKycStatus(customer);
     if (kyc_status !== user.kycStatus) {
