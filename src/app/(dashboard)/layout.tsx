@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { FeatureGuard } from "@/components/layout/feature-guard";
+import { AppLock } from "@/components/app-lock";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,7 @@ export default function DashboardLayout({
           <FeatureGuard>{children}</FeatureGuard>
         </div>
       </main>
+      <AppLock />
     </div>
   );
 }

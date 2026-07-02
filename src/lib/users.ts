@@ -11,6 +11,8 @@ export interface UserDoc {
   twoFactorEnabled: boolean;
   twoFactorSecret: string | null;
   twoFactorRecoveryCodes: string | null;
+  // Hashed app-lock passcode (salt:hash). null when the inactivity lock is off.
+  appLockHash: string | null;
 }
 
 const COLLECTION = "users";
@@ -29,6 +31,7 @@ function withDefaults(uid: string, data: Record<string, unknown>): UserDoc {
     twoFactorEnabled: Boolean(data.twoFactorEnabled),
     twoFactorSecret: (data.twoFactorSecret as string) ?? null,
     twoFactorRecoveryCodes: (data.twoFactorRecoveryCodes as string) ?? null,
+    appLockHash: (data.appLockHash as string) ?? null,
   };
 }
 
@@ -55,6 +58,7 @@ export async function ensureUserDoc(
       twoFactorEnabled: false,
       twoFactorSecret: null,
       twoFactorRecoveryCodes: null,
+      appLockHash: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

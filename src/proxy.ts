@@ -31,7 +31,9 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (AUTH_PATHS.includes(pathname) && hasSession) {
+  // Signed-in users shouldn't see the marketing/intro or auth pages — send them
+  // straight to the app.
+  if ((pathname === "/" || AUTH_PATHS.includes(pathname)) && hasSession) {
     const url = req.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -42,6 +44,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/accounts/:path*",
     "/deposit/:path*",

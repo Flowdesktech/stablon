@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { changePassword } from "@/lib/firebase/auth-actions";
-import { Lock, Smartphone, Loader2, ShieldCheck, Copy, Check, Download } from "lucide-react";
+import { Lock, Smartphone, Loader2, ShieldCheck, Copy, Check, Download, Timer } from "lucide-react";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -38,8 +38,17 @@ export function SecuritySection() {
   const { data, mutate } = useSWR<{ enabled: boolean }>("/api/account/2fa", fetcher);
   const twoFactorEnabled = Boolean(data?.enabled);
 
+  const { data: lockData, mutate: mutateLock } = useSWR<{ enabled: boolean }>(
+    "/api/account/passcode",
+    fetcher
+  );
+  const passcodeEnabled = Boolean(lockData?.enabled);
+
   const [pwOpen, setPwOpen] = useState(false);
   const [twoFaOpen, setTwoFaOpen] = useState(false);
+  const [setPasscodeOpen, setSetPasscodeOpen] = useState(false);
+  const [changePasscodeOpen, setChangePasscodeOpen] = useState(false);
+  const [disablePasscodeOpen, setDisablePasscodeOpen] = useState(false);
 
   return (
     <>
@@ -89,6 +98,36 @@ export function SecuritySection() {
               {twoFactorEnabled ? "Disable" : "Enable"}
             </Button>
           </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+            <div className="flex items-center gap-3">
+              <Timer className="w-4 h-4 text-white/40" />
+              <div>
+                <p className="text-sm text-white flex items-center gap-2">
+                  App Lock
+                  {passcodeEnabled && <Badge variant="success">On</Badge>}
+                </p>
+                <p className="text-xs text-white/40">
+                  {passcodeEnabled
+                    ? "A passcode is required after 1 hour of inactivity"
+                    : "Require a passcode after 1 hour of inactivity"}
+                </p>
+              </div>
+            </div>
+            {passcodeEnabled ? (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setChangePasscodeOpen(true)}>
+                  Change
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDisablePasscodeOpen(true)}>
+                  Turn off
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" onClick={() => setSetPasscodeOpen(true)}>
+                Set up
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -99,7 +138,240 @@ export function SecuritySection() {
         enabled={twoFactorEnabled}
         onChanged={() => mutate()}
       />
+      <SetPasscodeDialog
+        open={setPasscodeOpen}
+        onOpenChange={setSetPasscodeOpen}
+        onChanged={() => mutateLock()}
+      />
+      <ChangePasscodeDialog
+        open={changePasscodeOpen}
+        onOpenChange={setChangePasscodeOpen}
+        onChanged={() => mutateLock()}
+      />
+      <DisablePasscodeDialog
+        open={disablePasscodeOpen}
+        onOpenChange={setDisablePasscodeOpen}
+        onChanged={() => mutateLock()}
+      />
     </>
+  );
+}
+
+function PasscodeField({
+  label,
+  value,
+  onChange,
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-white/50 mb-1.5">{label}</label>
+      <Input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        placeholder="4–8 digits"
+        maxLength={8}
+        className="tracking-[0.3em]"
+        autoFocus={autoFocus}
+        required
+      />
+    </div>
+  );
+}
+
+function SetPasscodeDialog({
+  open,
+  onOpenChange,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChanged: () => void;
+}) {
+  const [passcode, setPasscode] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function reset() {
+    setPasscode("");
+    setConfirm("");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,8}$/.test(passcode)) {
+      toast({ variant: "error", title: "Invalid passcode", description: "Use 4 to 8 digits." });
+      return;
+    }
+    if (passcode !== confirm) {
+      toast({ variant: "error", title: "Passcodes don't match", description: "Re-enter to confirm." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await postJson("/api/account/passcode", { passcode });
+      toast({ variant: "success", title: "App Lock enabled", description: "You'll be asked for your passcode after inactivity." });
+      onChanged();
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't set passcode", description: err instanceof Error ? err.message : "Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Set up App Lock</DialogTitle>
+          <DialogDescription>
+            Choose a 4–8 digit passcode. It&apos;s required after 1 hour of inactivity.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <PasscodeField label="New passcode" value={passcode} onChange={setPasscode} autoFocus />
+          <PasscodeField label="Confirm passcode" value={confirm} onChange={setConfirm} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enable App Lock"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ChangePasscodeDialog({
+  open,
+  onOpenChange,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChanged: () => void;
+}) {
+  const [current, setCurrent] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function reset() {
+    setCurrent("");
+    setPasscode("");
+    setConfirm("");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,8}$/.test(passcode)) {
+      toast({ variant: "error", title: "Invalid passcode", description: "Use 4 to 8 digits." });
+      return;
+    }
+    if (passcode !== confirm) {
+      toast({ variant: "error", title: "Passcodes don't match", description: "Re-enter to confirm." });
+      return;
+    }
+    setSaving(true);
+    try {
+      await postJson("/api/account/passcode", { current, passcode });
+      toast({ variant: "success", title: "Passcode updated", description: "Your App Lock passcode has been changed." });
+      onChanged();
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't change passcode", description: err instanceof Error ? err.message : "Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change passcode</DialogTitle>
+          <DialogDescription>Enter your current passcode and choose a new one.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <PasscodeField label="Current passcode" value={current} onChange={setCurrent} autoFocus />
+          <PasscodeField label="New passcode" value={passcode} onChange={setPasscode} />
+          <PasscodeField label="Confirm new passcode" value={confirm} onChange={setConfirm} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update passcode"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DisablePasscodeDialog({
+  open,
+  onOpenChange,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChanged: () => void;
+}) {
+  const [current, setCurrent] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch("/api/account/passcode", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      toast({ variant: "info", title: "App Lock disabled", description: "A passcode is no longer required." });
+      onChanged();
+      setCurrent("");
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't disable App Lock", description: err instanceof Error ? err.message : "Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setCurrent(""); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Turn off App Lock</DialogTitle>
+          <DialogDescription>Enter your current passcode to remove the inactivity lock.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <PasscodeField label="Current passcode" value={current} onChange={setCurrent} autoFocus />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" variant="destructive" disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Turn off"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
