@@ -143,6 +143,24 @@ export async function getKYCLinkStatus(
   return bridgeFetch<BridgeKYCLink>(`/kyc_links/${kycLinkId}`);
 }
 
+// Hosted KYC link for a customer that already exists (created via /customers).
+// Passing `endorsement=sepa` enables the proof-of-address step required for
+// EUR/SEPA rails.
+export async function getCustomerKycLink(
+  customerId: string,
+  endorsement?: string
+): Promise<BridgeKYCLink> {
+  const query = endorsement ? `?endorsement=${encodeURIComponent(endorsement)}` : "";
+  return bridgeFetch<BridgeKYCLink>(`/customers/${customerId}/kyc_link${query}`);
+}
+
+// Terms-of-Service acceptance link for an existing customer.
+export async function getCustomerTosLink(
+  customerId: string
+): Promise<{ url: string }> {
+  return bridgeFetch<{ url: string }>(`/customers/${customerId}/tos_acceptance_link`);
+}
+
 // ─── Wallets ─────────────────────────────────────────────────
 
 export async function createWallet(

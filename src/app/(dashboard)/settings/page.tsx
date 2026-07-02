@@ -21,9 +21,58 @@ import {
   Bell,
   Globe,
   Loader2,
+  FileText,
 } from "lucide-react";
 
 type KYCStatus = "not_started" | "pending" | "approved" | "rejected" | "none";
+
+type KycLinks = { kyc_link?: string; tos_link?: string | null; tos_accepted: boolean };
+
+function KycTaskRow({
+  icon: Icon,
+  title,
+  desc,
+  href,
+  done,
+  actionLabel,
+}: {
+  icon: typeof Shield;
+  title: string;
+  desc: string;
+  href?: string | null;
+  done?: boolean;
+  actionLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+          {done ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <Icon className="w-4 h-4 text-purple-400" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-white">{title}</p>
+          <p className="text-xs text-white/40 truncate">{desc}</p>
+        </div>
+      </div>
+      {done ? (
+        <span className="text-xs text-emerald-400 shrink-0">Done</span>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!href}
+          onClick={() => href && window.open(href, "_blank", "noopener,noreferrer")}
+        >
+          {actionLabel} <ExternalLink className="w-3.5 h-3.5" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 const kycStatusConfig: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger"; icon: typeof CheckCircle2 }> = {
   not_started: { label: "Not Started", variant: "default", icon: AlertCircle },
@@ -37,6 +86,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { customer, isLoading: customerLoading, mutate: refreshCustomer } = useCustomer();
   const [startingKyc, setStartingKyc] = useState(false);
+  const [links, setLinks] = useState<KycLinks | null>(null);
 
   const kycStatus: KYCStatus = (customer?.kyc_status as KYCStatus) || "not_started";
   const statusConfig = kycStatusConfig[kycStatus] || kycStatusConfig.not_started;
@@ -57,12 +107,21 @@ export default function SettingsPage() {
     setStartingKyc(true);
     try {
       const result = await startKYC();
-      if (result?.kyc_link) {
-        window.open(result.kyc_link, "_blank");
+      const next: KycLinks = {
+        kyc_link: result?.kyc_link,
+        tos_link: result?.tos_link,
+        tos_accepted: Boolean(result?.tos_accepted),
+      };
+      setLinks(next);
+
+      // Open the first outstanding task automatically (TOS before KYC).
+      const first = !next.tos_accepted && next.tos_link ? next.tos_link : next.kyc_link;
+      if (first) {
+        window.open(first, "_blank", "noopener,noreferrer");
         toast({
           variant: "info",
           title: "Verification started",
-          description: "Complete the steps in the new tab, then return here to check your status.",
+          description: "Complete both tasks in the new tab, then return and refresh your status.",
         });
       } else {
         toast({
@@ -81,6 +140,35 @@ export default function SettingsPage() {
       setStartingKyc(false);
       refreshCustomer();
     }
+  }
+
+  function VerificationTasks() {
+    if (!links) return null;
+    return (
+      <div className="space-y-2">
+        <KycTaskRow
+          icon={FileText}
+          title="Accept Terms of Service"
+          desc="Required before verification can be approved"
+          href={links.tos_link}
+          done={links.tos_accepted}
+          actionLabel="Accept"
+        />
+        <KycTaskRow
+          icon={Shield}
+          title="Verify your identity"
+          desc="Government ID and a quick selfie check"
+          href={links.kyc_link}
+          actionLabel="Verify"
+        />
+        <p className="text-xs text-white/40 pt-1">
+          Finished both?{" "}
+          <button onClick={() => refreshCustomer()} className="text-purple-400 hover:underline">
+            Refresh status
+          </button>
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -122,26 +210,32 @@ export default function SettingsPage() {
                     Complete identity verification to unlock deposits, withdrawals, card access, and more.
                     The process takes about 2 minutes.
                   </p>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    {[
-                      { step: "1", label: "Personal Info", desc: "Name, address, DOB" },
-                      { step: "2", label: "ID Document", desc: "Passport or ID card" },
-                      { step: "3", label: "Selfie Check", desc: "Quick photo match" },
-                    ].map((s) => (
-                      <div key={s.step} className="flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                        <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-xs text-purple-300 font-bold shrink-0">
-                          {s.step}
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-white">{s.label}</p>
-                          <p className="text-xs text-white/40">{s.desc}</p>
-                        </div>
+                  {links ? (
+                    <VerificationTasks />
+                  ) : (
+                    <>
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        {[
+                          { step: "1", label: "Personal Info", desc: "Name, address, DOB" },
+                          { step: "2", label: "ID Document", desc: "Passport or ID card" },
+                          { step: "3", label: "Selfie Check", desc: "Quick photo match" },
+                        ].map((s) => (
+                          <div key={s.step} className="flex items-start gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                            <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-xs text-purple-300 font-bold shrink-0">
+                              {s.step}
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-white">{s.label}</p>
+                              <p className="text-xs text-white/40">{s.desc}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <Button onClick={handleStartKYC} disabled={startingKyc}>
-                    {startingKyc ? <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</> : <>Start Verification <ExternalLink className="w-4 h-4" /></>}
-                  </Button>
+                      <Button onClick={handleStartKYC} disabled={startingKyc}>
+                        {startingKyc ? <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</> : <>Start Verification <ExternalLink className="w-4 h-4" /></>}
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -190,9 +284,13 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </div>
-                  <Button onClick={handleStartKYC} disabled={startingKyc}>
-                    {startingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : "Retry Verification"}
-                  </Button>
+                  {links ? (
+                    <VerificationTasks />
+                  ) : (
+                    <Button onClick={handleStartKYC} disabled={startingKyc}>
+                      {startingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : "Retry Verification"}
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>

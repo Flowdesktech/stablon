@@ -35,6 +35,8 @@ export interface BridgeCustomer {
   future_requirements_due?: string[];
   capabilities?: Record<string, string>;
   has_accepted_terms_of_service?: boolean;
+  // Hosted Terms-of-Service acceptance link, returned on the customer object.
+  tos_link?: string;
   created_at: string;
   updated_at: string;
 }
