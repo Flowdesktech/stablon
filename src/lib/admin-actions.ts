@@ -35,3 +35,17 @@ export async function impersonateUser(uid: string): Promise<void> {
     throw new Error(body.error || "Failed to establish impersonated session");
   }
 }
+
+// Restores the admin's session cookie AND re-signs the Firebase client back in
+// as the admin, so both server- and client-sourced UI return to admin data.
+export async function stopImpersonation(): Promise<void> {
+  const res = await fetch("/api/admin/impersonate/stop", { method: "POST" });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error || "Failed to exit impersonation");
+  }
+
+  if (body.token) {
+    await signInWithCustomToken(getFirebaseAuth(), body.token);
+  }
+}

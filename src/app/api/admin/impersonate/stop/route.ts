@@ -40,7 +40,12 @@ export async function POST() {
     });
     store.delete(ADMIN_SESSION_COOKIE);
 
-    return NextResponse.json({ success: true });
+    // Mint a custom token so the client can re-sign in as the admin. Without
+    // this the browser's persisted Firebase auth would remain the impersonated
+    // user, and client-sourced UI (name/email) would keep showing their data.
+    const token = await getAdminAuth().createCustomToken(decoded.uid);
+
+    return NextResponse.json({ success: true, token });
   } catch {
     store.delete(ADMIN_SESSION_COOKIE);
     return NextResponse.json(

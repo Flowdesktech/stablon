@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useProfile } from "@/hooks/use-profile";
+import { stopImpersonation } from "@/lib/admin-actions";
 import { toast } from "@/components/ui/toast";
 import { Eye, Loader2, LogOut } from "lucide-react";
 
@@ -14,11 +15,7 @@ export function ImpersonationBanner() {
   async function exit() {
     setExiting(true);
     try {
-      const res = await fetch("/api/admin/impersonate/stop", { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to exit impersonation");
-      }
+      await stopImpersonation();
       // Hard navigate back to admin so all cached hooks re-fetch as the admin.
       window.location.href = "/admin/users";
     } catch (err) {
