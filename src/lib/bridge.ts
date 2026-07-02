@@ -27,6 +27,13 @@ export class BridgeError extends Error {
   }
 }
 
+// True when a Bridge call failed because the resource no longer exists (e.g. a
+// customer that was deleted/offboarded on Bridge's side). Callers use this to
+// self-heal by unlinking the stale customer id.
+export function isBridgeNotFound(error: unknown): boolean {
+  return error instanceof BridgeError && error.status === 404;
+}
+
 async function bridgeFetch<T>(
   path: string,
   options: RequestInit = {}

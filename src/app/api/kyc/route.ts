@@ -16,17 +16,29 @@ export async function POST() {
     const { user } = guard;
 
     let customerId = user.bridgeCustomerId;
-    if (!customerId) {
+    let customer: Awaited<ReturnType<typeof bridge.getCustomer>> | null = null;
+
+    if (customerId) {
+      try {
+        customer = await bridge.getCustomer(customerId);
+      } catch (error) {
+        if (!bridge.isBridgeNotFound(error)) throw error;
+        // Linked customer was removed on Bridge — recreate one below.
+        await updateUserDoc(user.uid, { bridgeCustomerId: null, kycStatus: "none" });
+        customerId = null;
+      }
+    }
+
+    if (!customerId || !customer) {
       const created = await bridge.createCustomer({
         full_name: user.name || user.email,
         email: user.email,
         type: "individual",
       });
       customerId = created.id;
+      customer = created;
       await updateUserDoc(user.uid, { bridgeCustomerId: customerId });
     }
-
-    const customer = await bridge.getCustomer(customerId);
 
     // Prefer the existing-customer KYC link; fall back to POST /kyc_links (which
     // Bridge dedups by email) if that endpoint fails or returns no link, so the

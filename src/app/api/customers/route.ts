@@ -25,8 +25,14 @@ export async function POST() {
     const { user } = guard;
 
     if (user.bridgeCustomerId) {
-      const customer = await bridge.getCustomer(user.bridgeCustomerId);
-      return respondWithCustomer(user.uid, user.kycStatus, customer);
+      try {
+        const customer = await bridge.getCustomer(user.bridgeCustomerId);
+        return respondWithCustomer(user.uid, user.kycStatus, customer);
+      } catch (error) {
+        if (!bridge.isBridgeNotFound(error)) throw error;
+        // The linked customer was removed on Bridge — drop it and create a fresh one.
+        await updateUserDoc(user.uid, { bridgeCustomerId: null, kycStatus: "none" });
+      }
     }
 
     const customer = await bridge.createCustomer({
@@ -37,7 +43,7 @@ export async function POST() {
 
     await updateUserDoc(user.uid, { bridgeCustomerId: customer.id });
 
-    return respondWithCustomer(user.uid, user.kycStatus, customer, { status: 201 });
+    return respondWithCustomer(user.uid, "none", customer, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -54,8 +60,20 @@ export async function GET() {
       return NextResponse.json({ id: null, kyc_status: user.kycStatus || "none" });
     }
 
-    const customer = await bridge.getCustomer(user.bridgeCustomerId);
-    return respondWithCustomer(user.uid, user.kycStatus, customer);
+    try {
+      const customer = await bridge.getCustomer(user.bridgeCustomerId);
+      return respondWithCustomer(user.uid, user.kycStatus, customer);
+    } catch (error) {
+      if (!bridge.isBridgeNotFound(error)) throw error;
+      // Customer no longer exists on Bridge → unlink and reset so the client
+      // treats this as a fresh, unverified account and can re-onboard.
+      await updateUserDoc(user.uid, { bridgeCustomerId: null, kycStatus: "none" });
+      return NextResponse.json({
+        id: null,
+        kyc_status: "none",
+        customer_removed: true,
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });
