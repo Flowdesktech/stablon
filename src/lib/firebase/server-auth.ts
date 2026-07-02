@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { getAdminAuth } from "@/lib/firebase/admin";
 
 export const SESSION_COOKIE = "session";
+// Holds the admin's own session cookie while they impersonate another user, so
+// the original session can be restored on "exit impersonation".
+export const ADMIN_SESSION_COOKIE = "admin_session";
 // Firebase session cookies can live up to 2 weeks.
 export const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 

@@ -14,6 +14,7 @@ const PROTECTED_PREFIXES = [
   "/swap",
   "/earn",
   "/settings",
+  "/admin",
 ];
 
 const AUTH_PATHS = ["/login", "/register"];
@@ -53,6 +54,7 @@ export const config = {
     "/swap/:path*",
     "/earn/:path*",
     "/settings/:path*",
+    "/admin/:path*",
     "/login",
     "/register",
   ],

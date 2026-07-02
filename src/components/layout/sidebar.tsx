@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOutUser } from "@/lib/firebase/auth-actions";
 import { cn } from "@/lib/utils";
 import { useKycStatus } from "@/hooks/use-bridge";
+import { useProfile } from "@/hooks/use-profile";
 import { isGatedPath } from "@/lib/feature-access";
 import {
   LayoutDashboard,
@@ -19,6 +20,8 @@ import {
   Menu,
   X,
   Lock,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,11 +36,17 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const adminNavItems = [
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/wallets", label: "Wallets", icon: Wallet },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isApproved } = useKycStatus();
+  const { isSuperAdmin } = useProfile();
 
   async function handleSignOut() {
     await signOutUser();
@@ -84,6 +93,37 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {isSuperAdmin && (
+          <div className="pt-4 mt-2 border-t border-white/5 space-y-1">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/30">
+              Admin
+            </p>
+            {adminNavItems.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    active
+                      ? "bg-purple-600/15 text-purple-300"
+                      : "text-white/50 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {item.label}
+                  {active && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       {/* Logout */}

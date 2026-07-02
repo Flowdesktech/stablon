@@ -13,6 +13,8 @@ export interface UserDoc {
   twoFactorRecoveryCodes: string | null;
   // Hashed app-lock passcode (salt:hash). null when the inactivity lock is off.
   appLockHash: string | null;
+  // Grants access to the admin area. Set manually in Firestore for trusted staff.
+  superAdmin: boolean;
 }
 
 const COLLECTION = "users";
@@ -32,6 +34,7 @@ function withDefaults(uid: string, data: Record<string, unknown>): UserDoc {
     twoFactorSecret: (data.twoFactorSecret as string) ?? null,
     twoFactorRecoveryCodes: (data.twoFactorRecoveryCodes as string) ?? null,
     appLockHash: (data.appLockHash as string) ?? null,
+    superAdmin: Boolean(data.superAdmin),
   };
 }
 
@@ -59,6 +62,7 @@ export async function ensureUserDoc(
       twoFactorSecret: null,
       twoFactorRecoveryCodes: null,
       appLockHash: null,
+      superAdmin: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

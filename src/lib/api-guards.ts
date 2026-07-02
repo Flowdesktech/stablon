@@ -33,3 +33,14 @@ export async function requireVerifiedCustomer(): Promise<GuardResult> {
   }
   return { user };
 }
+
+// For admin-only endpoints: requires an authenticated user carrying the
+// `superAdmin` flag on their Firestore profile. Everyone else gets a 403.
+export async function requireSuperAdmin(): Promise<GuardResult> {
+  const result = await requireUser();
+  if ("error" in result) return result;
+  if (!result.user.superAdmin) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return result;
+}
