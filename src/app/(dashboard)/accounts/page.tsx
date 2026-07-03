@@ -5,9 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { DESTINATION_CHAINS, getChain } from "@/lib/bridge-chains";
-import { useVirtualAccounts, createVirtualAccount } from "@/hooks/use-bridge";
-import type { BridgeVirtualAccount } from "@/types/bridge";
+import {
+  DESTINATION_CHAINS,
+  getChain,
+  formatPaymentRails,
+  formatChainLabel,
+} from "@/lib/bridge-chains";
+import {
+  useVirtualAccounts,
+  createVirtualAccount,
+  updateVirtualAccountDestination,
+} from "@/hooks/use-bridge";
+import type { AppVirtualAccount } from "@/types/bridge";
 import {
   Landmark,
   Plus,
@@ -17,6 +26,9 @@ import {
   DollarSign,
   Euro,
   Loader2,
+  Wallet,
+  Pencil,
+  X,
 } from "lucide-react";
 
 function CopyButton({ text }: { text: string }) {
@@ -38,12 +50,198 @@ function CopyButton({ text }: { text: string }) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.03] border border-white/5">
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-white/40">{label}</p>
-        <p className="text-sm text-white font-mono">{value}</p>
+        <p className="text-sm text-white font-mono break-all">{value}</p>
       </div>
       <CopyButton text={value} />
     </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <p className="text-xs text-white/40">{label}</p>
+      <p className="text-xs text-white/80 text-right break-words">{value}</p>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35 pt-1">
+      {children}
+    </p>
+  );
+}
+
+function AccountCard({ account }: { account: AppVirtualAccount }) {
+  const details = account.account_details || {};
+  const isUsd = account.currency?.toLowerCase() === "usd";
+  const railsLabel = formatPaymentRails(account.payment_rails);
+  const dest = account.destination;
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initialChain =
+    dest?.payment_rail && getChain(dest.payment_rail)
+      ? dest.payment_rail
+      : DESTINATION_CHAINS[0].id;
+  const [chainId, setChainId] = useState(initialChain);
+  const [coin, setCoin] = useState(
+    dest?.currency?.toLowerCase() || getChain(initialChain)!.coins[0]
+  );
+  const [address, setAddress] = useState(dest?.address ?? "");
+
+  const editChain = getChain(chainId) ?? DESTINATION_CHAINS[0];
+
+  function handleChainChange(id: string) {
+    setChainId(id);
+    const next = getChain(id);
+    if (next && !next.coins.includes(coin)) setCoin(next.coins[0]);
+  }
+
+  function startEdit() {
+    setChainId(initialChain);
+    setCoin(dest?.currency?.toLowerCase() || getChain(initialChain)!.coins[0]);
+    setAddress(dest?.address ?? "");
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    if (!address.trim() || saving) return;
+    setSaving(true);
+    try {
+      await updateVirtualAccountDestination({
+        id: account.id,
+        destinationAddress: address,
+        destinationNetwork: chainId,
+        destinationCurrency: coin,
+      });
+      setEditing(false);
+    } catch {
+      // Errors surfaced via toast in the hook.
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+              {isUsd ? <DollarSign className="w-5 h-5 text-emerald-400" /> : <Euro className="w-5 h-5 text-blue-400" />}
+            </div>
+            <div>
+              <CardTitle className="text-base">{account.currency?.toUpperCase()} Account</CardTitle>
+              <p className="text-xs text-white/40">{railsLabel || (isUsd ? "ACH / Wire" : "SEPA")}</p>
+            </div>
+          </div>
+          <Badge variant={account.status === "active" ? "success" : "secondary"}>
+            {account.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {details.bank_name && (
+          <div className="text-xs text-white/40 flex items-center gap-1.5">
+            <Landmark className="w-3.5 h-3.5" />
+            {details.bank_name}
+          </div>
+        )}
+        {details.beneficiary_name && <DetailRow label="Beneficiary name" value={details.beneficiary_name} />}
+        {details.account_number && <DetailRow label="Account number" value={details.account_number} />}
+        {details.routing_number && <DetailRow label="Routing number" value={details.routing_number} />}
+        {details.iban && <DetailRow label="IBAN" value={details.iban} />}
+        {details.bic && <DetailRow label="BIC / SWIFT" value={details.bic} />}
+        {details.clabe && <DetailRow label="CLABE" value={details.clabe} />}
+        {details.br_code && <DetailRow label="PIX key" value={details.br_code} />}
+        {details.beneficiary_address && <DetailRow label="Beneficiary address" value={details.beneficiary_address} />}
+
+        {/* Destination */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+          <div className="flex items-center justify-between">
+            <SectionLabel>Destination details</SectionLabel>
+            {!editing && (
+              <button
+                onClick={startEdit}
+                className="flex items-center gap-1 text-xs text-purple-300 hover:text-purple-200 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3" /> Edit
+              </button>
+            )}
+          </div>
+
+          {editing ? (
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] text-white/40">Chain</label>
+                  <select
+                    value={chainId}
+                    onChange={(e) => handleChainChange(e.target.value)}
+                    className="mt-1 w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-2 text-xs text-white outline-none focus:border-purple-500/50 cursor-pointer"
+                  >
+                    {DESTINATION_CHAINS.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-[#14141c]">{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/40">Coin</label>
+                  <select
+                    value={coin}
+                    onChange={(e) => setCoin(e.target.value)}
+                    className="mt-1 w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-2 text-xs text-white outline-none focus:border-purple-500/50 cursor-pointer"
+                  >
+                    {editChain.coins.map((c) => (
+                      <option key={c} value={c} className="bg-[#14141c]">{c.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] text-white/40">Wallet address</label>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={editChain.addressHint}
+                  className="mt-1 font-mono text-xs h-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1" disabled={!address.trim() || saving} onClick={handleSave}>
+                  {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</> : <><Check className="w-3.5 h-3.5" /> Save</>}
+                </Button>
+                <Button size="sm" variant="outline" disabled={saving} onClick={() => setEditing(false)}>
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </Button>
+              </div>
+            </div>
+          ) : dest && (dest.address || dest.currency || dest.payment_rail) ? (
+            <>
+              {dest.payment_rail && <InfoRow label="Blockchain" value={formatChainLabel(dest.payment_rail)} />}
+              {dest.currency && <InfoRow label="Currency" value={dest.currency.toUpperCase()} />}
+              {dest.address && (
+                <div className="flex items-center justify-between gap-2 pt-1.5">
+                  <div className="min-w-0 flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                    <p className="text-xs text-white/80 font-mono break-all">{dest.address}</p>
+                  </div>
+                  <CopyButton text={dest.address} />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-white/40 pt-1.5">No destination set. Click Edit to add one.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -196,47 +394,11 @@ export default function AccountsPage() {
         <div className="grid md:grid-cols-2 gap-6">
           {[1, 2].map((i) => <div key={i} className="skeleton h-64 rounded-2xl" />)}
         </div>
-      ) : (accounts as BridgeVirtualAccount[]).length > 0 ? (
+      ) : (accounts as AppVirtualAccount[]).length > 0 ? (
         <div className="grid md:grid-cols-2 gap-6">
-          {(accounts as BridgeVirtualAccount[]).map((account) => {
-            const details = account.account_details || {};
-            const isUsd = account.currency?.toLowerCase() === "usd";
-            return (
-              <Card key={account.id} className="relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                        {isUsd ? <DollarSign className="w-5 h-5 text-emerald-400" /> : <Euro className="w-5 h-5 text-blue-400" />}
-                      </div>
-                      <div>
-                        <CardTitle className="text-base">{account.currency?.toUpperCase()} Account</CardTitle>
-                        <p className="text-xs text-white/40">{isUsd ? "ACH / Wire" : "SEPA"}</p>
-                      </div>
-                    </div>
-                    <Badge variant={account.status === "active" ? "success" : "secondary"}>
-                      {account.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {details.bank_name && (
-                    <div className="text-xs text-white/40 mb-2 flex items-center gap-1.5">
-                      <Landmark className="w-3.5 h-3.5" />
-                      {details.bank_name}
-                    </div>
-                  )}
-                  {details.account_number && <DetailRow label="Account Number" value={details.account_number} />}
-                  {details.routing_number && <DetailRow label="Routing Number" value={details.routing_number} />}
-                  {details.iban && <DetailRow label="IBAN" value={details.iban} />}
-                  {details.bic && <DetailRow label="BIC / SWIFT" value={details.bic} />}
-                  {details.clabe && <DetailRow label="CLABE" value={details.clabe} />}
-                  {details.pix_key && <DetailRow label="PIX Key" value={details.pix_key} />}
-                </CardContent>
-              </Card>
-            );
-          })}
+          {(accounts as AppVirtualAccount[]).map((account) => (
+            <AccountCard key={account.id} account={account} />
+          ))}
         </div>
       ) : creating ? null : (
         <Card>

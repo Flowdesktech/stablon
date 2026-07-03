@@ -29,3 +29,35 @@ export function isSupportedDestination(network: string, currency: string): boole
   const chain = getChain(network);
   return Boolean(chain && chain.coins.includes(currency));
 }
+
+// Human-readable labels for Bridge fiat payment-rail codes.
+const RAIL_LABELS: Record<string, string> = {
+  ach: "ACH",
+  ach_push: "ACH",
+  ach_pull: "ACH",
+  wire: "Wire",
+  fednow: "FedNow",
+  sepa: "SEPA",
+  swift: "SWIFT",
+  spei: "SPEI",
+  pix: "PIX",
+  faster_payments: "Faster Payments",
+};
+
+export function formatPaymentRail(rail: string): string {
+  if (!rail) return "";
+  return (
+    RAIL_LABELS[rail] ||
+    rail.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+export function formatPaymentRails(rails: string[] | undefined): string {
+  if (!rails || rails.length === 0) return "";
+  return rails.map(formatPaymentRail).join(" / ");
+}
+
+// Label for a destination blockchain (falls back to generic rail formatting).
+export function formatChainLabel(network: string): string {
+  return getChain(network)?.label ?? formatPaymentRail(network);
+}

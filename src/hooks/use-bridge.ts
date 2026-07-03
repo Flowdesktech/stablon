@@ -139,6 +139,34 @@ export async function createVirtualAccount(params: {
   }
 }
 
+export async function updateVirtualAccountDestination(params: {
+  id: string;
+  destinationAddress: string;
+  destinationNetwork: string;
+  destinationCurrency: string;
+}) {
+  try {
+    const res = await fetch("/api/accounts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: params.id,
+        destination_address: params.destinationAddress.trim(),
+        destination_network: params.destinationNetwork,
+        destination_currency: params.destinationCurrency,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    globalMutate("/api/accounts");
+    toast({ variant: "success", title: "Destination updated", description: "Incoming deposits will settle to the new address." });
+    return data;
+  } catch (err) {
+    notifyError("Couldn't update destination", err);
+    throw err;
+  }
+}
+
 // ─── External Accounts (bank accounts for withdrawal) ────────
 
 export function useExternalAccounts() {

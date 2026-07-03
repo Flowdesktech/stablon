@@ -112,11 +112,17 @@ export interface BridgeVirtualAccount {
     bank_account_number?: string;
     bank_beneficiary_name?: string;
     bank_beneficiary_address?: string;
+    account_holder_name?: string;
+    account_number?: string;
+    sort_code?: string;
+    clabe?: string;
+    br_code?: string;
     iban?: string;
     bic?: string;
     payment_rail?: string;
     payment_rails?: string[];
   };
+  developer_fee_percent?: string;
   destination?: {
     currency?: string;
     payment_rail?: string;
@@ -133,7 +139,34 @@ export interface BridgeVirtualAccount {
     clabe?: string;
     pix_key?: string;
   };
-  developer_fee_percent?: string;
+  created_at: string;
+}
+
+// Flattened virtual account shape returned by /api/accounts for the UI.
+export interface AppVirtualAccount {
+  id: string;
+  customer_id: string;
+  status: string;
+  currency: string;
+  payment_rails: string[];
+  developer_fee_percent: string | null;
+  account_details: {
+    bank_name?: string;
+    beneficiary_name?: string;
+    beneficiary_address?: string;
+    account_number?: string;
+    routing_number?: string;
+    iban?: string;
+    bic?: string;
+    clabe?: string;
+    br_code?: string;
+  };
+  destination: {
+    payment_rail?: string;
+    currency?: string;
+    address?: string;
+    bridge_wallet_id?: string;
+  } | null;
   created_at: string;
 }
 

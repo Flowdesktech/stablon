@@ -295,6 +295,24 @@ export async function createVirtualAccount(
   );
 }
 
+export async function updateVirtualAccount(
+  customerId: string,
+  virtualAccountId: string,
+  data: {
+    destination: {
+      payment_rail?: string;
+      currency?: string;
+      address?: string;
+      bridge_wallet_id?: string;
+    };
+  }
+): Promise<BridgeVirtualAccount> {
+  return bridgeFetch<BridgeVirtualAccount>(
+    `/customers/${customerId}/virtual_accounts/${virtualAccountId}`,
+    { method: "PUT", body: JSON.stringify(data) }
+  );
+}
+
 export async function listVirtualAccounts(
   customerId: string
 ): Promise<{ data: BridgeVirtualAccount[] }> {

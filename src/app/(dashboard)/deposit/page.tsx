@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useVirtualAccounts, useWallets } from "@/hooks/use-bridge";
-import type { BridgeVirtualAccount, BridgeWallet } from "@/types/bridge";
+import type { AppVirtualAccount, BridgeWallet } from "@/types/bridge";
+import { formatPaymentRails, formatChainLabel } from "@/lib/bridge-chains";
 import {
   ArrowDownToLine,
   Landmark,
@@ -43,10 +44,10 @@ const cryptoChains = [
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/5">
-      <div>
+    <div className="flex items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/5">
+      <div className="min-w-0">
         <p className="text-xs text-white/40">{label}</p>
-        <p className="text-sm text-white font-mono">{value}</p>
+        <p className="text-sm text-white font-mono break-all">{value}</p>
       </div>
       <button
         onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
@@ -58,7 +59,25 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FiatDepositDetails({ accounts, rail }: { accounts: BridgeVirtualAccount[]; rail: string }) {
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <p className="text-xs text-white/40">{label}</p>
+      <p className="text-xs text-white/80 text-right break-words">{value}</p>
+    </div>
+  );
+}
+
+function DepositSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35 pb-1">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[]; rail: string }) {
   const isUsd = ["ach", "wire"].includes(rail);
   const matchCurrency = isUsd ? "usd" : rail === "sepa" ? "eur" : rail === "pix" ? "brl" : rail === "spei" ? "mxn" : "gbp";
   const account = accounts.find((a) => a.currency?.toLowerCase() === matchCurrency);
@@ -74,16 +93,32 @@ function FiatDepositDetails({ accounts, rail }: { accounts: BridgeVirtualAccount
     );
   }
 
+  const railsLabel = formatPaymentRails(account.payment_rails);
+  const dest = account.destination;
+
   return (
     <div className="space-y-3">
-      {details.bank_name && <CopyField label="Bank Name" value={details.bank_name} />}
-      {details.account_number && <CopyField label="Account Number" value={details.account_number} />}
-      {details.routing_number && <CopyField label="Routing Number" value={details.routing_number} />}
+      {railsLabel && <CopyField label="Payment rail(s)" value={railsLabel} />}
+      {details.beneficiary_name && <CopyField label="Beneficiary name" value={details.beneficiary_name} />}
+      {details.bank_name && <CopyField label="Bank name" value={details.bank_name} />}
+      {details.routing_number && <CopyField label="Bank routing number" value={details.routing_number} />}
+      {details.account_number && <CopyField label="Bank account number" value={details.account_number} />}
       {details.iban && <CopyField label="IBAN" value={details.iban} />}
       {details.bic && <CopyField label="BIC / SWIFT" value={details.bic} />}
       {details.clabe && <CopyField label="CLABE" value={details.clabe} />}
-      {details.pix_key && <CopyField label="PIX Key" value={details.pix_key} />}
-      <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+      {details.br_code && <CopyField label="PIX key" value={details.br_code} />}
+      {details.beneficiary_address && <CopyField label="Beneficiary address" value={details.beneficiary_address} />}
+      <CopyField label="Currency" value={account.currency.toUpperCase()} />
+
+      {dest && (dest.address || dest.currency || dest.payment_rail) && (
+        <DepositSection title="Destination details">
+          {dest.payment_rail && <InfoLine label="Destination blockchain" value={formatChainLabel(dest.payment_rail)} />}
+          {dest.currency && <InfoLine label="Destination currency" value={dest.currency.toUpperCase()} />}
+          {dest.address && <CopyField label="Destination wallet address" value={dest.address} />}
+        </DepositSection>
+      )}
+
+      <div className="mt-1 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
         <p className="text-xs text-amber-300">
           Deposited funds will be automatically converted to stablecoins and credited to your Stablon balance.
         </p>
@@ -161,7 +196,7 @@ export default function DepositPage() {
                   <CardDescription>Send funds to the following account details</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <FiatDepositDetails accounts={accounts as BridgeVirtualAccount[]} rail={selectedRail} />
+                  <FiatDepositDetails accounts={accounts as AppVirtualAccount[]} rail={selectedRail} />
                 </CardContent>
               </Card>
             ) : (
