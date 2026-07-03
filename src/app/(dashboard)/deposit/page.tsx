@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useVirtualAccounts, useWallets, createWallet } from "@/hooks/use-bridge";
 import type { AppVirtualAccount, BridgeWallet } from "@/types/bridge";
 import { formatPaymentRails, formatChainLabel } from "@/lib/bridge-chains";
+import { CopyAllButton } from "@/components/copy-all-button";
+import { buildAccountDetailsText } from "@/lib/account-details";
 import {
   ArrowDownToLine,
   Landmark,
@@ -99,6 +101,7 @@ function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[];
 
   return (
     <div className="space-y-3">
+      <CopyAllButton text={buildAccountDetailsText(account)} className="w-full" />
       {railsLabel && <CopyField label="Payment rail(s)" value={railsLabel} />}
       {details.beneficiary_name && <CopyField label="Beneficiary name" value={details.beneficiary_name} />}
       {details.bank_name && <CopyField label="Bank name" value={details.bank_name} />}

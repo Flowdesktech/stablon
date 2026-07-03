@@ -16,6 +16,8 @@ import {
   createVirtualAccount,
   updateVirtualAccountDestination,
 } from "@/hooks/use-bridge";
+import { CopyAllButton } from "@/components/copy-all-button";
+import { buildAccountDetailsText } from "@/lib/account-details";
 import type { AppVirtualAccount } from "@/types/bridge";
 import {
   Landmark,
@@ -161,6 +163,8 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
         {details.clabe && <DetailRow label="CLABE" value={details.clabe} />}
         {details.br_code && <DetailRow label="PIX key" value={details.br_code} />}
         {details.beneficiary_address && <DetailRow label="Beneficiary address" value={details.beneficiary_address} />}
+
+        <CopyAllButton text={buildAccountDetailsText(account)} className="w-full" />
 
         {/* Destination */}
         <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
