@@ -4,6 +4,10 @@ import * as bridge from "@/lib/bridge";
 import { isSupportedDestination, DESTINATION_CHAINS } from "@/lib/bridge-chains";
 import type { BridgeVirtualAccount } from "@/types/bridge";
 
+// Developer fee (percent) taken on incoming virtual-account deposits.
+// Configurable via env; defaults to 1%.
+const DEVELOPER_FEE_PERCENT = process.env.BRIDGE_DEVELOPER_FEE_PERCENT || "0";
+
 // Collapse Bridge's response into the flat shape the accounts UI expects
 // (account_details + currency + active/inactive status).
 function normalizeVirtualAccount(va: BridgeVirtualAccount) {
@@ -80,6 +84,7 @@ export async function POST(req: Request) {
         currency: destCurrency,
         address,
       },
+      developer_fee_percent: DEVELOPER_FEE_PERCENT,
     });
 
     return NextResponse.json(normalizeVirtualAccount(account), { status: 201 });

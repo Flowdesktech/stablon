@@ -16,7 +16,6 @@ import {
   Globe,
   DollarSign,
   Euro,
-  Inbox,
   Loader2,
 } from "lucide-react";
 
