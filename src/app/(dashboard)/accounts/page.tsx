@@ -27,11 +27,23 @@ import {
   Globe,
   DollarSign,
   Euro,
+  PoundSterling,
   Loader2,
   Wallet,
   Pencil,
   X,
 } from "lucide-react";
+
+// Fiat currencies Bridge can issue virtual accounts for, with their local rail.
+const FIAT_CURRENCIES = [
+  { id: "usd", label: "USD", rail: "ACH / Wire", icon: DollarSign, color: "text-emerald-400" },
+  { id: "eur", label: "EUR", rail: "SEPA", icon: Euro, color: "text-blue-400" },
+  { id: "gbp", label: "GBP", rail: "Faster Payments", icon: PoundSterling, color: "text-purple-400" },
+];
+
+function getFiat(currency: string | undefined) {
+  return FIAT_CURRENCIES.find((f) => f.id === (currency || "").toLowerCase());
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,7 +92,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function AccountCard({ account }: { account: AppVirtualAccount }) {
   const details = account.account_details || {};
-  const isUsd = account.currency?.toLowerCase() === "usd";
+  const fiat = getFiat(account.currency);
+  const CurrencyIcon = fiat?.icon ?? DollarSign;
   const railsLabel = formatPaymentRails(account.payment_rails);
   const dest = account.destination;
 
@@ -136,11 +149,11 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-              {isUsd ? <DollarSign className="w-5 h-5 text-emerald-400" /> : <Euro className="w-5 h-5 text-blue-400" />}
+              <CurrencyIcon className={`w-5 h-5 ${fiat?.color ?? "text-white/70"}`} />
             </div>
             <div>
               <CardTitle className="text-base">{account.currency?.toUpperCase()} Account</CardTitle>
-              <p className="text-xs text-white/40">{railsLabel || (isUsd ? "ACH / Wire" : "SEPA")}</p>
+              <p className="text-xs text-white/40">{railsLabel || fiat?.rail || "Bank transfer"}</p>
             </div>
           </div>
           <Badge variant={account.status === "active" ? "success" : "secondary"}>
@@ -160,8 +173,6 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
         {details.routing_number && <DetailRow label="Routing number" value={details.routing_number} />}
         {details.iban && <DetailRow label="IBAN" value={details.iban} />}
         {details.bic && <DetailRow label="BIC / SWIFT" value={details.bic} />}
-        {details.clabe && <DetailRow label="CLABE" value={details.clabe} />}
-        {details.br_code && <DetailRow label="PIX key" value={details.br_code} />}
         {details.beneficiary_address && <DetailRow label="Beneficiary address" value={details.beneficiary_address} />}
 
         <CopyAllButton text={buildAccountDetailsText(account)} className="w-full" />
@@ -292,7 +303,7 @@ export default function AccountsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Global Accounts</h1>
-          <p className="text-white/50 mt-1">USD and EUR bank accounts for receiving payments worldwide</p>
+          <p className="text-white/50 mt-1">USD, EUR and GBP accounts for receiving payments worldwide</p>
         </div>
         <Button onClick={() => setCreating(!creating)}>
           <Plus className="w-4 h-4" /> New Account
@@ -311,19 +322,20 @@ export default function AccountsPage() {
             {/* Fiat account currency */}
             <div>
               <label className="text-xs text-white/50">Account currency</label>
-              <div className="flex gap-3 mt-1.5">
-                {["usd", "eur"].map((c) => (
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {FIAT_CURRENCIES.map((c) => (
                   <button
-                    key={c}
-                    onClick={() => setFiatCurrency(c)}
-                    className={`flex-1 flex items-center justify-center gap-2 h-12 rounded-xl border transition-colors cursor-pointer ${
-                      fiatCurrency === c
+                    key={c.id}
+                    onClick={() => setFiatCurrency(c.id)}
+                    className={`flex flex-col items-center justify-center gap-0.5 h-16 rounded-xl border transition-colors cursor-pointer ${
+                      fiatCurrency === c.id
                         ? "border-purple-500/50 bg-purple-600/15 text-white"
                         : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]"
                     }`}
                   >
-                    {c === "usd" ? <DollarSign className="w-4 h-4" /> : <Euro className="w-4 h-4" />}
-                    <span className="font-medium">{c.toUpperCase()}</span>
+                    <c.icon className="w-4 h-4" />
+                    <span className="font-medium text-sm">{c.label}</span>
+                    <span className="text-[10px] text-white/40">{c.rail}</span>
                   </button>
                 ))}
               </div>
@@ -412,7 +424,7 @@ export default function AccountsPage() {
             </div>
             <div>
               <p className="text-white/70 font-medium">No accounts yet</p>
-              <p className="text-sm text-white/40 mt-1">Create a USD or EUR virtual account to receive payments worldwide.</p>
+              <p className="text-sm text-white/40 mt-1">Create a USD, EUR or GBP virtual account to receive payments worldwide.</p>
             </div>
             <Button onClick={() => setCreating(true)}>
               <Plus className="w-4 h-4" /> Create Account

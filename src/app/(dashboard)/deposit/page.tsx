@@ -27,8 +27,6 @@ const fiatRails = [
   { id: "ach", name: "ACH", region: "United States", currency: "USD", speed: "1-2 days" },
   { id: "wire", name: "Wire Transfer", region: "United States", currency: "USD", speed: "Same day" },
   { id: "sepa", name: "SEPA", region: "Europe", currency: "EUR", speed: "1-2 days" },
-  { id: "pix", name: "PIX", region: "Brazil", currency: "BRL", speed: "Instant" },
-  { id: "spei", name: "SPEI", region: "Mexico", currency: "MXN", speed: "Instant" },
   { id: "fps", name: "Faster Payments", region: "United Kingdom", currency: "GBP", speed: "Instant" },
 ];
 
@@ -82,7 +80,7 @@ function DepositSection({ title, children }: { title: string; children: React.Re
 
 function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[]; rail: string }) {
   const isUsd = ["ach", "wire"].includes(rail);
-  const matchCurrency = isUsd ? "usd" : rail === "sepa" ? "eur" : rail === "pix" ? "brl" : rail === "spei" ? "mxn" : "gbp";
+  const matchCurrency = isUsd ? "usd" : rail === "sepa" ? "eur" : "gbp";
   const account = accounts.find((a) => a.currency?.toLowerCase() === matchCurrency);
   const details = account?.account_details;
 
@@ -109,8 +107,6 @@ function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[];
       {details.account_number && <CopyField label="Bank account number" value={details.account_number} />}
       {details.iban && <CopyField label="IBAN" value={details.iban} />}
       {details.bic && <CopyField label="BIC / SWIFT" value={details.bic} />}
-      {details.clabe && <CopyField label="CLABE" value={details.clabe} />}
-      {details.br_code && <CopyField label="PIX key" value={details.br_code} />}
       {details.beneficiary_address && <CopyField label="Beneficiary address" value={details.beneficiary_address} />}
       <CopyField label="Currency" value={account.currency.toUpperCase()} />
 

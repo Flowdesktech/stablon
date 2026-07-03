@@ -115,14 +115,11 @@ export interface BridgeVirtualAccount {
     account_holder_name?: string;
     account_number?: string;
     sort_code?: string;
-    clabe?: string;
-    br_code?: string;
     iban?: string;
     bic?: string;
     payment_rail?: string;
     payment_rails?: string[];
   };
-  developer_fee_percent?: string;
   destination?: {
     currency?: string;
     payment_rail?: string;
@@ -136,8 +133,6 @@ export interface BridgeVirtualAccount {
     routing_number?: string;
     iban?: string;
     bic?: string;
-    clabe?: string;
-    pix_key?: string;
   };
   created_at: string;
 }
@@ -149,7 +144,6 @@ export interface AppVirtualAccount {
   status: string;
   currency: string;
   payment_rails: string[];
-  developer_fee_percent: string | null;
   account_details: {
     bank_name?: string;
     beneficiary_name?: string;
@@ -158,8 +152,6 @@ export interface AppVirtualAccount {
     routing_number?: string;
     iban?: string;
     bic?: string;
-    clabe?: string;
-    br_code?: string;
   };
   destination: {
     payment_rail?: string;
@@ -263,7 +255,6 @@ export interface ActivityItem {
   senderName?: string;
   netAmount?: string;
   subtotal?: string;
-  developerFee?: string;
   exchangeFee?: string;
   gasFee?: string;
   txHash?: string;

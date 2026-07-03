@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { formatPaymentRail, formatChainLabel } from "@/lib/bridge-chains";
+import { apiError } from "@/lib/api-error";
 import type {
   ActivityItem,
   BridgeTransfer,
@@ -60,7 +61,6 @@ function normalizeTransfer(t: BridgeTransfer): ActivityItem {
     paymentRail: srcRail ? formatPaymentRail(srcRail) : undefined,
     destinationRail: dstRail ? formatPaymentRail(dstRail) : undefined,
     netAmount: t.destination?.amount,
-    developerFee: t.developer_fee,
     destinationAddress: t.destination?.to_address,
   };
 }
@@ -146,7 +146,6 @@ function normalizeOnrampEvents(
       senderName: withSource.source?.sender_name,
       netAmount: paymentEvent?.amount,
       subtotal: paymentEvent?.subtotal_amount ?? grossEvent.subtotal_amount,
-      developerFee: paymentEvent?.developer_fee_amount,
       exchangeFee: paymentEvent?.exchange_fee_amount,
       gasFee: paymentEvent?.gas_fee,
       txHash: paymentEvent?.destination_tx_hash,
@@ -193,7 +192,6 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

@@ -122,7 +122,7 @@ export default function TransactionDetailPage() {
   const txUrl = explorerTxUrl(item.destinationNetwork, item.txHash);
 
   const hasAmounts =
-    item.subtotal || item.developerFee || item.exchangeFee || item.gasFee || item.netAmount;
+    item.subtotal || item.exchangeFee || item.gasFee || item.netAmount;
   const hasSource = item.paymentRail || item.senderName;
   const hasDestination =
     item.destinationNetwork || item.destinationCurrency || item.destinationAddress || item.txHash;
@@ -176,7 +176,6 @@ export default function TransactionDetailPage() {
         <Section title="Amount">
           <Row label="Amount" value={formatAmount(amt, item.currency)} />
           {item.subtotal && <Row label="Subtotal" value={formatAmount(parseFloat(item.subtotal), item.currency)} />}
-          {item.developerFee && <Row label="Developer fee" value={formatAmount(parseFloat(item.developerFee), item.destinationCurrency ?? item.currency)} />}
           {item.exchangeFee && item.exchangeFee !== "0.0" && <Row label="Exchange fee" value={formatAmount(parseFloat(item.exchangeFee), item.destinationCurrency ?? item.currency)} />}
           {item.gasFee && item.gasFee !== "0.0" && <Row label="Gas fee" value={formatAmount(parseFloat(item.gasFee), item.destinationCurrency ?? item.currency)} />}
           {item.netAmount && (

@@ -1,6 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
 
-const FIAT = new Set(["usd", "eur", "gbp", "brl", "mxn"]);
+const FIAT = new Set(["usd", "eur", "gbp"]);
 
 // Formats an amount for display: fiat as currency, stablecoins/crypto as a
 // plain number followed by the ticker (Intl can't format e.g. "USDC").

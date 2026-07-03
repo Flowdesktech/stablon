@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-guards";
 import { getAdminDb } from "@/lib/firebase/admin";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 import type { BridgeWallet } from "@/types/bridge";
 
 interface AdminWallet extends BridgeWallet {
@@ -49,7 +50,6 @@ export async function GET() {
 
     return NextResponse.json({ data: nested.flat() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

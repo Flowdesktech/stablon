@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
@@ -15,8 +16,7 @@ export async function GET() {
     const cards = await bridge.getCardAccounts(user.bridgeCustomerId);
     return NextResponse.json(cards);
   } catch (error) {
-    const status = error instanceof bridge.BridgeError ? error.status : 500;
-    return NextResponse.json({ error: bridge.bridgeErrorMessage(error) }, { status });
+    return apiError(error);
   }
 }
 
@@ -30,7 +30,6 @@ export async function POST(req: Request) {
     const card = await bridge.provisionCard(user.bridgeCustomerId!, body);
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
-    const status = error instanceof bridge.BridgeError ? error.status : 500;
-    return NextResponse.json({ error: bridge.bridgeErrorMessage(error) }, { status });
+    return apiError(error);
   }
 }

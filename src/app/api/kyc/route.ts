@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 import type { BridgeKYCLink } from "@/types/bridge";
 
 // Returns the two hosted links a customer must complete to onboard with Bridge:
@@ -70,7 +71,6 @@ export async function POST() {
       kyc_status,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

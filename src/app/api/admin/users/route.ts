@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-guards";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { apiError } from "@/lib/api-error";
 
 // Admin: list every user profile. Returns non-sensitive fields only (no 2FA
 // secrets, recovery codes, or passcode hashes).
@@ -28,7 +29,6 @@ export async function GET() {
     data.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     return NextResponse.json({ data });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

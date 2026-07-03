@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { isSupportedDestination, DESTINATION_CHAINS } from "@/lib/bridge-chains";
+import { apiError } from "@/lib/api-error";
 import type { BridgeVirtualAccount, AppVirtualAccount } from "@/types/bridge";
 
 // Developer fee (percent) taken on incoming virtual-account deposits.
@@ -22,7 +23,6 @@ function normalizeVirtualAccount(va: BridgeVirtualAccount): AppVirtualAccount {
     status,
     currency: (sdi.currency || va.currency || "").toLowerCase(),
     payment_rails: rails,
-    developer_fee_percent: va.developer_fee_percent ?? null,
     account_details: {
       bank_name: sdi.bank_name,
       beneficiary_name: sdi.bank_beneficiary_name || sdi.account_holder_name,
@@ -31,8 +31,6 @@ function normalizeVirtualAccount(va: BridgeVirtualAccount): AppVirtualAccount {
       routing_number: sdi.bank_routing_number || sdi.sort_code,
       iban: sdi.iban,
       bic: sdi.bic,
-      clabe: sdi.clabe,
-      br_code: sdi.br_code,
     },
     destination: va.destination
       ? {
@@ -61,8 +59,7 @@ export async function GET() {
       data: (accounts.data ?? []).map(normalizeVirtualAccount),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }
 
@@ -104,8 +101,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(normalizeVirtualAccount(account), { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }
 
@@ -148,7 +144,6 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json(normalizeVirtualAccount(account));
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

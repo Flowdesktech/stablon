@@ -39,8 +39,6 @@ const RAIL_LABELS: Record<string, string> = {
   fednow: "FedNow",
   sepa: "SEPA",
   swift: "SWIFT",
-  spei: "SPEI",
-  pix: "PIX",
   faster_payments: "Faster Payments",
 };
 

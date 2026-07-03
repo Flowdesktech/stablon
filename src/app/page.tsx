@@ -25,7 +25,7 @@ const features = [
   {
     icon: Globe,
     title: "Global Accounts",
-    desc: "Open USD and EUR accounts instantly. Receive via ACH, Wire, SEPA, PIX, SPEI, and Faster Payments.",
+    desc: "Open USD, EUR, and GBP accounts instantly. Receive via ACH, Wire, SEPA, and Faster Payments.",
     gradient: "from-purple-500 to-purple-700",
   },
   {
@@ -85,7 +85,7 @@ const faqs = [
   },
   {
     q: "Which countries and currencies are supported?",
-    a: "Stablon is available to users in 160+ countries. You can hold USD and EUR balances and receive funds via ACH, Wire, SEPA, PIX, SPEI, and Faster Payments, plus on-chain stablecoins like USDC, USDT, and DAI.",
+    a: "Stablon is available to users in 160+ countries. You can hold USD, EUR, and GBP balances and receive funds via ACH, Wire, SEPA, and Faster Payments, plus on-chain stablecoins like USDC, USDT, and DAI.",
   },
   {
     q: "How do I add or withdraw money?",
@@ -312,8 +312,6 @@ export default function LandingPage() {
                 "ACH",
                 "Wire",
                 "SEPA",
-                "PIX",
-                "SPEI",
                 "Faster Payments",
                 "USDC",
                 "USDT",

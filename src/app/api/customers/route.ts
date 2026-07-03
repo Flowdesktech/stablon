@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 
 // Returns the customer to the client with a normalized `kyc_status`, and keeps
 // the Firestore `kycStatus` in sync so server-side guards stay accurate.
@@ -45,8 +46,7 @@ export async function POST() {
 
     return respondWithCustomer(user.uid, "none", customer, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }
 
@@ -75,7 +75,6 @@ export async function GET() {
       });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

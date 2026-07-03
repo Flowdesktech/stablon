@@ -17,8 +17,6 @@ export function buildAccountDetailsText(account: AppVirtualAccount): string {
   add("Account number", d.account_number);
   add("IBAN", d.iban);
   add("BIC / SWIFT", d.bic);
-  add("CLABE", d.clabe);
-  add("PIX key", d.br_code);
   add("Beneficiary address", d.beneficiary_address);
   add("Currency", account.currency ? account.currency.toUpperCase() : undefined);
 

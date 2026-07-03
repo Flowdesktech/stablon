@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-guards";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
+import { apiError } from "@/lib/api-error";
 
 // Admin: permanently delete a user (Firebase Auth identity + Firestore profile).
 export async function DELETE(
@@ -31,7 +32,6 @@ export async function DELETE(
     await getAdminDb().collection("users").doc(uid).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

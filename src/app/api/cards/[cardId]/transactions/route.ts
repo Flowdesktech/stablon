@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 
 export async function GET(
   _req: Request,
@@ -14,7 +15,6 @@ export async function GET(
     const transactions = await bridge.getCardTransactions(cardId);
     return NextResponse.json(transactions);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

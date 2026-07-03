@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
@@ -15,8 +16,7 @@ export async function GET() {
     const accounts = await bridge.listExternalAccounts(user.bridgeCustomerId);
     return NextResponse.json(accounts);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }
 
@@ -30,7 +30,6 @@ export async function POST(req: Request) {
     const account = await bridge.createExternalAccount(user.bridgeCustomerId!, body);
     return NextResponse.json(account, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }

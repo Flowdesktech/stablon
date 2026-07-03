@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import * as bridge from "@/lib/bridge";
+import { apiError } from "@/lib/api-error";
 
 export async function GET(req: Request) {
   try {
@@ -10,7 +11,6 @@ export async function GET(req: Request) {
     const rate = await bridge.getExchangeRate(from, to);
     return NextResponse.json(rate);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(error);
   }
 }
