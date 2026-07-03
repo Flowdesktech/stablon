@@ -217,3 +217,57 @@ export interface BridgeRewardsSummary {
   current_apy: string;
   currency: string;
 }
+
+// A single event in a virtual account's on-ramp lifecycle (funds_received →
+// payment_submitted → payment_processed, etc.).
+export interface BridgeVirtualAccountEvent {
+  id: string;
+  customer_id: string;
+  virtual_account_id: string;
+  type: string;
+  amount: string;
+  currency: string;
+  developer_fee_amount?: string;
+  exchange_fee_amount?: string;
+  subtotal_amount?: string;
+  gas_fee?: string;
+  deposit_id?: string;
+  destination_tx_hash?: string;
+  created_at: string;
+  source?: {
+    description?: string;
+    payment_rail?: string;
+    sender_name?: string;
+    sender_routing_number?: string;
+    wire_message?: string;
+  };
+}
+
+// Unified feed item shown in the app's "Recent Activity" list. Bridge transfers
+// and virtual-account on-ramp events are both normalized into this shape.
+export interface ActivityItem {
+  id: string;
+  kind: "transfer" | "onramp";
+  type: "deposit" | "withdrawal" | "swap";
+  description: string;
+  amount: string;
+  currency: string;
+  destinationCurrency?: string;
+  status: string;
+  created_at: string;
+  // ── Detail fields (populated for the transaction detail view) ──
+  updated_at?: string;
+  reference?: string;
+  paymentRail?: string;
+  destinationRail?: string;
+  senderName?: string;
+  netAmount?: string;
+  subtotal?: string;
+  developerFee?: string;
+  exchangeFee?: string;
+  gasFee?: string;
+  txHash?: string;
+  destinationNetwork?: string;
+  destinationAddress?: string;
+  depositId?: string;
+}

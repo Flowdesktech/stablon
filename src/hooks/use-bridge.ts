@@ -86,6 +86,12 @@ export function useTransfers() {
   return { transfers: data?.data ?? [], error, isLoading, mutate };
 }
 
+// Unified activity feed: Bridge transfers + virtual-account on-ramp events.
+export function useActivity() {
+  const { data, error, isLoading, mutate } = useSWR("/api/activity", fetcher);
+  return { activity: data?.data ?? [], error, isLoading, mutate };
+}
+
 export async function createTransfer(body: Record<string, unknown>) {
   try {
     const res = await fetch("/api/transfers", {

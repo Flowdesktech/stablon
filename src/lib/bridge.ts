@@ -5,6 +5,7 @@ import type {
   BridgeWallet,
   BridgeTransfer,
   BridgeVirtualAccount,
+  BridgeVirtualAccountEvent,
   BridgeCardAccount,
   BridgeCardTransaction,
   BridgeExternalAccount,
@@ -334,11 +335,14 @@ export async function listVirtualAccounts(
   );
 }
 
-export async function getVirtualAccountActivity(
+// History of on-ramp lifecycle events for a single virtual account
+// (funds_received, payment_submitted, payment_processed, refunded, …).
+export async function getVirtualAccountHistory(
+  customerId: string,
   virtualAccountId: string
-): Promise<{ data: unknown[] }> {
-  return bridgeFetch<{ data: unknown[] }>(
-    `/virtual_accounts/${virtualAccountId}/activity`
+): Promise<{ count?: number; data: BridgeVirtualAccountEvent[] }> {
+  return bridgeFetch<{ count?: number; data: BridgeVirtualAccountEvent[] }>(
+    `/customers/${customerId}/virtual_accounts/${virtualAccountId}/history`
   );
 }
 

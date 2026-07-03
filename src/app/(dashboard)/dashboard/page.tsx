@@ -6,11 +6,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useWallets, useTransfers, useCustomer, createBridgeCustomer } from "@/hooks/use-bridge";
+import { useWallets, useTransfers, useActivity, useCustomer, createBridgeCustomer } from "@/hooks/use-bridge";
+import { ActivityRow } from "@/components/activity/activity-row";
 import { toast } from "@/components/ui/toast";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import type { BridgeWallet, BridgeTransfer } from "@/types/bridge";
+import { formatCurrency } from "@/lib/utils";
+import type { BridgeWallet, ActivityItem } from "@/types/bridge";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -20,7 +20,6 @@ import {
   Wallet,
   DollarSign,
   Euro,
-  Clock,
   ChevronRight,
   Inbox,
   Sparkles,
@@ -48,21 +47,6 @@ function aggregateBalances(wallets: BridgeWallet[]) {
   return Object.entries(totals).map(([currency, amount]) => ({ currency, amount }));
 }
 
-function transferDescription(t: BridgeTransfer) {
-  const src = t.source?.payment_rail || "crypto";
-  const dst = t.destination?.payment_rail || "crypto";
-  if (src.includes("ach") || src.includes("wire") || src.includes("sepa")) return `${src.toUpperCase()} Deposit`;
-  if (dst.includes("ach") || dst.includes("wire") || dst.includes("sepa")) return `${dst.toUpperCase()} Withdrawal`;
-  return `${(t.source?.currency || "").toUpperCase()} → ${(t.destination?.currency || "").toUpperCase()}`;
-}
-
-function transferType(t: BridgeTransfer) {
-  const src = t.source?.payment_rail || "";
-  const dst = t.destination?.payment_rail || "";
-  if (["ach", "wire", "sepa", "pix", "spei"].some((r) => src.includes(r))) return "deposit";
-  if (["ach", "wire", "sepa", "pix", "spei"].some((r) => dst.includes(r))) return "withdrawal";
-  return "swap";
-}
 
 function AccountSetupBanner() {
   const { customer, isLoading, mutate: refreshCustomer } = useCustomer();
@@ -121,7 +105,7 @@ function AccountSetupBanner() {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { wallets, isLoading: walletsLoading } = useWallets();
-  const { transfers, isLoading: transfersLoading } = useTransfers();
+  const { activity, isLoading: activityLoading } = useActivity();
 
   if (authLoading || walletsLoading) {
     return (
@@ -146,7 +130,7 @@ export default function DashboardPage() {
     return sum;
   }, 0);
 
-  const recentTransfers = (transfers as BridgeTransfer[]).slice(0, 5);
+  const recentActivity = (activity as ActivityItem[]).slice(0, 5);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -229,50 +213,23 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
-          <Button variant="ghost" size="sm" className="text-white/50">
-            View All <ChevronRight className="w-4 h-4" />
+          <Button asChild variant="ghost" size="sm" className="text-white/50">
+            <Link href="/transactions">
+              View All <ChevronRight className="w-4 h-4" />
+            </Link>
           </Button>
         </div>
         <Card>
           <CardContent className="p-0">
-            {transfersLoading ? (
+            {activityLoading ? (
               <div className="p-6 space-y-4">
                 {[1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}
               </div>
-            ) : recentTransfers.length > 0 ? (
+            ) : recentActivity.length > 0 ? (
               <div className="divide-y divide-white/5">
-                {recentTransfers.map((tx) => {
-                  const type = transferType(tx);
-                  const desc = transferDescription(tx);
-                  const amt = tx.amount ? parseFloat(tx.amount) : 0;
-                  const isIncoming = type === "deposit";
-                  return (
-                    <div key={tx.id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
-                          {type === "deposit" && <ArrowDownToLine className="w-4 h-4 text-emerald-400" />}
-                          {type === "withdrawal" && <ArrowUpFromLine className="w-4 h-4 text-blue-400" />}
-                          {type === "swap" && <ArrowLeftRight className="w-4 h-4 text-purple-400" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">{desc}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-white/40">
-                            <Clock className="w-3 h-3" />
-                            {formatDate(tx.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-medium ${isIncoming ? "text-emerald-400" : "text-white"}`}>
-                          {isIncoming ? "+" : "-"}{formatCurrency(amt, tx.source?.currency?.toUpperCase() === "EUR" ? "EUR" : "USD")}
-                        </p>
-                        <Badge variant={tx.state === "completed" ? "success" : tx.state === "error" ? "danger" : "warning"} className="mt-1">
-                          {tx.state}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
+                {recentActivity.map((tx) => (
+                  <ActivityRow key={`${tx.kind}-${tx.id}`} item={tx} />
+                ))}
               </div>
             ) : (
               <div className="p-8 flex flex-col items-center gap-3 text-center">

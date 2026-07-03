@@ -15,6 +15,7 @@ import {
   CreditCard,
   ArrowLeftRight,
   TrendingUp,
+  ReceiptText,
   Settings,
   LogOut,
   Menu,
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/withdraw", label: "Withdraw", icon: ArrowUpFromLine },
   { href: "/card", label: "Card", icon: CreditCard },
   { href: "/swap", label: "Swap", icon: ArrowLeftRight },
+  { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/earn", label: "Earn", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
