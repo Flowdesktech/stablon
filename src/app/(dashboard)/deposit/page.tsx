@@ -203,8 +203,8 @@ function CryptoDepositDetails({
 
 export default function DepositPage() {
   const [method, setMethod] = useState<DepositMethod>("fiat");
-  const [selectedRail, setSelectedRail] = useState<string | null>(null);
-  const [selectedChain, setSelectedChain] = useState<string | null>(null);
+  const [selectedRail, setSelectedRail] = useState<string | null>("ach");
+  const [selectedChain, setSelectedChain] = useState<string | null>("ethereum");
   const { accounts } = useVirtualAccounts();
   const { wallets, error: walletsError } = useWallets();
 
@@ -223,14 +223,14 @@ export default function DepositPage() {
       <div className="flex gap-3">
         <Button
           variant={method === "fiat" ? "default" : "outline"}
-          onClick={() => { setMethod("fiat"); setSelectedChain(null); }}
+          onClick={() => { setMethod("fiat"); setSelectedRail("ach"); }}
           className="flex-1 sm:flex-none"
         >
           <Landmark className="w-4 h-4" /> Bank Transfer
         </Button>
         <Button
           variant={method === "crypto" ? "default" : "outline"}
-          onClick={() => { setMethod("crypto"); setSelectedRail(null); }}
+          onClick={() => { setMethod("crypto"); setSelectedChain("ethereum"); }}
           className="flex-1 sm:flex-none"
         >
           <Wallet className="w-4 h-4" /> On-Chain
