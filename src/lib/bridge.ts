@@ -34,11 +34,24 @@ export function isBridgeNotFound(error: unknown): boolean {
   return error instanceof BridgeError && error.status === 404;
 }
 
-// Extracts Bridge's human-readable `message` from an error, falling back to the
+// Extracts Bridge's human-readable message from an error, falling back to the
 // generic error text. Avoids leaking the raw `Bridge API 401: {json}` blob.
+//
+// For `invalid_parameters` the top-level `message` is generic ("Please resubmit
+// the following parameters…"), while the useful detail (e.g. an approval notice)
+// lives under `source.key.<field>` — so we prefer a descriptive field message.
 export function bridgeErrorMessage(error: unknown): string {
   if (error instanceof BridgeError) {
-    const body = error.body as { message?: string } | undefined;
+    const body = error.body as
+      | { message?: string; source?: { key?: Record<string, unknown> } }
+      | undefined;
+
+    const keyValues = body?.source?.key ? Object.values(body.source.key) : [];
+    const descriptive = keyValues.find(
+      (v): v is string => typeof v === "string" && v.trim().length > 25
+    );
+    if (descriptive) return descriptive;
+
     if (body && typeof body.message === "string" && body.message.trim()) {
       return body.message;
     }

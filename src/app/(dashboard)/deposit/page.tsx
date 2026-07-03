@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useVirtualAccounts, useWallets } from "@/hooks/use-bridge";
+import { useVirtualAccounts, useWallets, createWallet } from "@/hooks/use-bridge";
 import type { AppVirtualAccount, BridgeWallet } from "@/types/bridge";
 import { formatPaymentRails, formatChainLabel } from "@/lib/bridge-chains";
 import {
@@ -16,6 +15,8 @@ import {
   Check,
   Globe,
   ChevronRight,
+  Loader2,
+  Plus,
 } from "lucide-react";
 
 type DepositMethod = "fiat" | "crypto";
@@ -127,12 +128,85 @@ function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[];
   );
 }
 
+function CryptoDepositDetails({
+  chainData,
+  wallet,
+  walletsError,
+}: {
+  chainData: { id: string; name: string; tokens: string[] };
+  wallet: BridgeWallet | undefined;
+  walletsError: boolean;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    if (generating) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      await createWallet(chainData.id);
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : "Couldn't create wallet.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Deposit Address</CardTitle>
+        <CardDescription>Send {chainData.tokens.join(" or ")} to this address</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {wallet ? (
+          <>
+            <CopyField label={`${chainData.name} Address`} value={wallet.address} />
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <p className="text-xs text-amber-300">
+                Only send supported tokens on the selected network. Sending other assets may result in permanent loss.
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/5">
+              <p className="text-sm text-white/70">
+                You don&apos;t have a {chainData.name} deposit wallet yet.
+              </p>
+              <p className="text-xs text-white/40 mt-1">
+                Generate one to get a permanent on-chain address for receiving {chainData.tokens.join(" / ")}.
+              </p>
+            </div>
+            <Button className="w-full" onClick={handleGenerate} disabled={generating}>
+              {generating ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+              ) : (
+                <><Plus className="w-4 h-4" /> Generate {chainData.name} address</>
+              )}
+            </Button>
+            {(genError || walletsError) && (
+              <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                <p className="text-xs text-red-300">
+                  {genError ||
+                    "We couldn't load your wallets from Bridge. Your account may need additional approval to create custodial wallets — contact your Bridge representative."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DepositPage() {
   const [method, setMethod] = useState<DepositMethod>("fiat");
   const [selectedRail, setSelectedRail] = useState<string | null>(null);
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const { accounts } = useVirtualAccounts();
-  const { wallets } = useWallets();
+  const { wallets, error: walletsError } = useWallets();
 
   const walletForChain = (chainId: string) => {
     const network = chainId.toLowerCase();
@@ -237,35 +311,14 @@ export default function DepositPage() {
             ))}
           </div>
           <div>
-            {selectedChain ? (() => {
-              const wallet = walletForChain(selectedChain);
-              const chainData = cryptoChains.find((c) => c.id === selectedChain)!;
-              return (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Deposit Address</CardTitle>
-                    <CardDescription>Send {chainData.tokens.join(" or ")} to this address</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {wallet ? (
-                      <CopyField label={`${chainData.name} Address`} value={wallet.address} />
-                    ) : (
-                      <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                        <p className="text-xs text-amber-300">
-                          No wallet found for {chainData.name}. A wallet will be provisioned when your account is set up with Bridge.
-                        </p>
-                      </div>
-                    )}
-                    <Input placeholder="Amount to deposit (optional)" type="number" />
-                    <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                      <p className="text-xs text-amber-300">
-                        Only send supported tokens on the selected network. Sending other assets may result in permanent loss.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })() : (
+            {selectedChain ? (
+              <CryptoDepositDetails
+                key={selectedChain}
+                chainData={cryptoChains.find((c) => c.id === selectedChain)!}
+                wallet={walletForChain(selectedChain)}
+                walletsError={Boolean(walletsError)}
+              />
+            ) : (
               <div className="flex items-center justify-center h-64 rounded-2xl border border-dashed border-white/10">
                 <div className="text-center">
                   <Wallet className="w-8 h-8 text-white/20 mx-auto mb-3" />
