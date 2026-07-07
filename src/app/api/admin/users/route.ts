@@ -22,6 +22,7 @@ export async function GET() {
         twoFactorEnabled: Boolean(d.twoFactorEnabled),
         appLockEnabled: Boolean(d.appLockHash),
         superAdmin: Boolean(d.superAdmin),
+        loginDisabled: Boolean(d.loginDisabled),
         createdAt: (d.createdAt as string) ?? null,
       };
     });

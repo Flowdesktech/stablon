@@ -21,7 +21,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
-import { deleteAdminUser, impersonateUser } from "@/lib/admin-actions";
+import {
+  deleteAdminUser,
+  impersonateUser,
+  setUserLoginDisabled,
+} from "@/lib/admin-actions";
 import {
   Users,
   Inbox,
@@ -31,6 +35,8 @@ import {
   Eye,
   Trash2,
   LogIn,
+  Ban,
+  CircleCheck,
 } from "lucide-react";
 
 interface AdminUser {
@@ -42,6 +48,7 @@ interface AdminUser {
   twoFactorEnabled: boolean;
   appLockEnabled: boolean;
   superAdmin: boolean;
+  loginDisabled: boolean;
   createdAt: string | null;
 }
 
@@ -79,6 +86,31 @@ export function AdminUsersTable() {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [impersonatingUid, setImpersonatingUid] = useState<string | null>(null);
+  const [togglingUid, setTogglingUid] = useState<string | null>(null);
+
+  async function handleToggleLogin(user: AdminUser) {
+    const next = !user.loginDisabled;
+    setTogglingUid(user.uid);
+    try {
+      await setUserLoginDisabled(user.uid, next);
+      toast({
+        variant: next ? "info" : "success",
+        title: next ? "Login disabled" : "Login enabled",
+        description: next
+          ? `${user.email} can no longer sign in. You can still impersonate them.`
+          : `${user.email} can sign in again.`,
+      });
+      mutate();
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Couldn't update login access",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setTogglingUid(null);
+    }
+  }
 
   async function handleImpersonate(user: AdminUser) {
     setImpersonatingUid(user.uid);
@@ -193,13 +225,18 @@ export function AdminUsersTable() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
+                          {u.loginDisabled && (
+                            <Badge variant="danger">Login disabled</Badge>
+                          )}
                           {u.twoFactorEnabled && <Badge variant="secondary">2FA</Badge>}
                           {u.appLockEnabled && (
                             <Badge variant="secondary">Passcode</Badge>
                           )}
-                          {!u.twoFactorEnabled && !u.appLockEnabled && (
-                            <span className="text-white/30 text-xs">—</span>
-                          )}
+                          {!u.loginDisabled &&
+                            !u.twoFactorEnabled &&
+                            !u.appLockEnabled && (
+                              <span className="text-white/30 text-xs">—</span>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -249,6 +286,22 @@ export function AdminUsersTable() {
                             <DropdownMenuContent>
                               <DropdownMenuItem onSelect={() => setViewUser(u)}>
                                 <Eye className="w-4 h-4" /> View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={isSelf || togglingUid !== null}
+                                onSelect={() => {
+                                  if (!isSelf) handleToggleLogin(u);
+                                }}
+                              >
+                                {u.loginDisabled ? (
+                                  <>
+                                    <CircleCheck className="w-4 h-4" /> Enable login
+                                  </>
+                                ) : (
+                                  <>
+                                    <Ban className="w-4 h-4" /> Disable login
+                                  </>
+                                )}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -304,6 +357,10 @@ export function AdminUsersTable() {
               <DetailLine
                 label="Role"
                 value={viewUser.superAdmin ? "Super admin" : "Member"}
+              />
+              <DetailLine
+                label="Login"
+                value={viewUser.loginDisabled ? "Disabled" : "Enabled"}
               />
               <DetailLine
                 label="Joined"

@@ -23,6 +23,7 @@ export type SessionResult =
         | "2FA_INVALID"
         | "INVALID_CREDENTIALS"
         | "EMAIL_UNVERIFIED"
+        | "ACCOUNT_DISABLED"
         | "ERROR";
       message?: string;
     };
@@ -64,6 +65,7 @@ export async function signInWithPassword(
   if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
   if (data.error === "2FA_INVALID") return { ok: false, code: "2FA_INVALID" };
   if (data.error === "EMAIL_UNVERIFIED") return { ok: false, code: "EMAIL_UNVERIFIED" };
+  if (data.error === "ACCOUNT_DISABLED") return { ok: false, code: "ACCOUNT_DISABLED" };
   return { ok: false, code: "ERROR", message: data.error };
 }
 
@@ -148,6 +150,7 @@ export async function completeVerifiedSignIn(): Promise<SessionResult> {
   const data = await res.json().catch(() => ({}));
   if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
   if (data.error === "EMAIL_UNVERIFIED") return { ok: false, code: "EMAIL_UNVERIFIED" };
+  if (data.error === "ACCOUNT_DISABLED") return { ok: false, code: "ACCOUNT_DISABLED" };
   return { ok: false, code: "ERROR", message: data.error };
 }
 

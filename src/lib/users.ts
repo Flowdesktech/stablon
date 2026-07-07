@@ -15,6 +15,9 @@ export interface UserDoc {
   appLockHash: string | null;
   // Grants access to the admin area. Set manually in Firestore for trusted staff.
   superAdmin: boolean;
+  // When true, the user is blocked from signing in. A super admin can still
+  // impersonate them (impersonation doesn't go through the normal login gate).
+  loginDisabled: boolean;
 }
 
 const COLLECTION = "users";
@@ -35,6 +38,7 @@ function withDefaults(uid: string, data: Record<string, unknown>): UserDoc {
     twoFactorRecoveryCodes: (data.twoFactorRecoveryCodes as string) ?? null,
     appLockHash: (data.appLockHash as string) ?? null,
     superAdmin: Boolean(data.superAdmin),
+    loginDisabled: Boolean(data.loginDisabled),
   };
 }
 
@@ -63,6 +67,7 @@ export async function ensureUserDoc(
       twoFactorRecoveryCodes: null,
       appLockHash: null,
       superAdmin: false,
+      loginDisabled: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

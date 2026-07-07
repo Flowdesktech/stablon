@@ -11,6 +11,23 @@ export async function deleteAdminUser(uid: string): Promise<void> {
   }
 }
 
+// Enables or disables a user's ability to sign in. Impersonation still works
+// regardless of this flag.
+export async function setUserLoginDisabled(
+  uid: string,
+  loginDisabled: boolean
+): Promise<void> {
+  const res = await fetch(`/api/admin/users/${uid}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ loginDisabled }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to update user");
+  }
+}
+
 // Signs the admin in as the target user and swaps their session cookie. The
 // caller should hard-navigate afterwards so all cached client state resets.
 export async function impersonateUser(uid: string): Promise<void> {

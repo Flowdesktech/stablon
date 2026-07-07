@@ -51,6 +51,12 @@ export async function POST(req: Request) {
       name: decoded.name ?? null,
     });
 
+    // Blocked accounts can't establish a session via normal sign-in. (Super
+    // admin impersonation uses a separate endpoint and is unaffected.)
+    if (user.loginDisabled) {
+      return NextResponse.json({ error: "ACCOUNT_DISABLED" }, { status: 403 });
+    }
+
     if (user.twoFactorEnabled && user.twoFactorSecret) {
       const code = typeof totp === "string" ? totp.trim() : "";
       if (!code) {

@@ -38,6 +38,8 @@ export default function LoginPage() {
     } else if (res.code === "2FA_INVALID") {
       setTwoFactorRequired(true);
       setError("Invalid authentication code");
+    } else if (res.code === "ACCOUNT_DISABLED") {
+      setError("Your account has been disabled. Please contact support.");
     } else if (res.code === "ERROR") {
       // Surface real server/config failures (e.g. Firebase Admin misconfig on
       // the server) instead of masking them as bad credentials.
