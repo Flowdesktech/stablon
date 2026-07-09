@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import {
   SESSION_COOKIE,
+  ADMIN_SESSION_COOKIE,
   SESSION_MAX_AGE_MS,
 } from "@/lib/firebase/server-auth";
 import { ensureUserDoc, updateUserDoc } from "@/lib/users";
@@ -93,6 +94,9 @@ export async function POST(req: Request) {
       path: "/",
       maxAge: SESSION_MAX_AGE_MS / 1000,
     });
+    // A fresh normal sign-in is never an impersonated session — clear any stale
+    // stashed admin session so the impersonation banner doesn't leak across logins.
+    store.delete(ADMIN_SESSION_COOKIE);
 
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -107,9 +111,11 @@ export async function POST(req: Request) {
   }
 }
 
-// Clears the session cookie (sign out).
+// Clears the session cookie (sign out). Also drops any stashed admin session so
+// impersonation state never survives a logout.
 export async function DELETE() {
   const store = await cookies();
   store.delete(SESSION_COOKIE);
+  store.delete(ADMIN_SESSION_COOKIE);
   return NextResponse.json({ success: true });
 }

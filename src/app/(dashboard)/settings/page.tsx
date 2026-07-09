@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCustomer, startKYC } from "@/hooks/use-bridge";
 import { toast } from "@/components/ui/toast";
 import { SecuritySection } from "@/components/settings/security-section";
+import { outstandingKycRequirements } from "@/lib/kyc";
 import {
   User,
   Shield,
@@ -24,7 +26,7 @@ import {
   FileText,
 } from "lucide-react";
 
-type KYCStatus = "not_started" | "pending" | "approved" | "rejected" | "none";
+type KYCStatus = "not_started" | "incomplete" | "pending" | "approved" | "rejected" | "none";
 
 type KycLinks = { kyc_link?: string; tos_link?: string | null; tos_accepted: boolean };
 
@@ -89,6 +91,7 @@ function KycTaskRow({
 const kycStatusConfig: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger"; icon: typeof CheckCircle2 }> = {
   not_started: { label: "Not Started", variant: "default", icon: AlertCircle },
   none: { label: "Not Started", variant: "default", icon: AlertCircle },
+  incomplete: { label: "Action Needed", variant: "warning", icon: AlertCircle },
   pending: { label: "Under Review", variant: "warning", icon: Clock },
   approved: { label: "Verified", variant: "success", icon: CheckCircle2 },
   rejected: { label: "Rejected", variant: "danger", icon: AlertCircle },
@@ -120,7 +123,11 @@ export default function SettingsPage() {
   const tosLink: string | null = links?.tos_link ?? customer?.tos_link ?? null;
   const tosAccepted: boolean =
     links?.tos_accepted ?? Boolean(customer?.has_accepted_terms_of_service);
-  const needsKyc = ["not_started", "none", "rejected"].includes(kycStatus);
+  const needsKyc = ["not_started", "none", "rejected", "incomplete"].includes(kycStatus);
+
+  // What Bridge still needs from the user (e.g. a government ID document) when
+  // the customer is created but not yet approved.
+  const outstanding = outstandingKycRequirements(customer);
 
   // Fetch the hosted TOS + KYC links from Bridge. Creates the customer if needed.
   async function loadLinks(): Promise<KycLinks | null> {
@@ -184,6 +191,18 @@ export default function SettingsPage() {
           Refresh status
         </button>
       </p>
+
+      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm text-white font-medium">Verify in-app instead</p>
+          <p className="text-xs text-white/40">
+            Enter your details directly — quick check or full document verification.
+          </p>
+        </div>
+        <Link href="/verify">
+          <Button variant="outline" size="sm">Verify in-app</Button>
+        </Link>
+      </div>
     </div>
   );
 
@@ -197,7 +216,7 @@ export default function SettingsPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* KYC Verification */}
-          <Card className={["not_started", "none"].includes(kycStatus) ? "border-amber-500/20" : kycStatus === "approved" ? "border-emerald-500/20" : ""}>
+          <Card className={["not_started", "none", "incomplete"].includes(kycStatus) ? "border-amber-500/20" : kycStatus === "approved" ? "border-emerald-500/20" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -226,6 +245,35 @@ export default function SettingsPage() {
                     Complete identity verification to unlock deposits, withdrawals, card access, and more.
                     The process takes about 2 minutes.
                   </p>
+                  {verificationTasks}
+                </div>
+              )}
+
+              {kycStatus === "incomplete" && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                    <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-amber-300">A few more steps needed</p>
+                      <p className="text-xs text-amber-300/70 mt-1">
+                        We&apos;ve received your details. Bridge still needs the following to finish
+                        verifying your identity:
+                      </p>
+                      {outstanding.length > 0 ? (
+                        <ul className="mt-2 space-y-1 list-disc list-inside">
+                          {outstanding.map((req) => (
+                            <li key={req} className="text-xs text-amber-300/80">
+                              {req}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-amber-300/60 mt-1">
+                          Complete the remaining verification steps below.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   {verificationTasks}
                 </div>
               )}

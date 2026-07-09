@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/earn",
   "/settings",
   "/admin",
+  "/verify",
 ];
 
 const AUTH_PATHS = ["/login", "/register"];
@@ -55,6 +56,7 @@ export const config = {
     "/earn/:path*",
     "/settings/:path*",
     "/admin/:path*",
+    "/verify/:path*",
     "/login",
     "/register",
   ],

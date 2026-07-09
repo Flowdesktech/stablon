@@ -54,6 +54,45 @@ export async function startKYC() {
   return data;
 }
 
+// Direct (API-based) KYC: request a hosted Terms-of-Service URL that redirects
+// back to `redirectUri` with a signed_agreement_id.
+export async function requestTosLink(redirectUri: string): Promise<string> {
+  const res = await fetch("/api/kyc/tos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ redirect_uri: redirectUri }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Couldn't start Terms of Service");
+  return data.url as string;
+}
+
+// Bridge's occupation code list for the advanced-KYC occupation field.
+export function useOccupationCodes() {
+  const { data, error, isLoading } = useSWR("/api/kyc/occupations", fetcher, {
+    revalidateOnFocus: false,
+  });
+  return {
+    occupations: (data?.data ?? []) as { display_name: string; code: string }[],
+    error,
+    isLoading,
+  };
+}
+
+// Submit the in-app KYC form straight to Bridge.
+export async function submitDirectKyc(payload: Record<string, unknown>) {
+  const res = await fetch("/api/kyc/direct", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Verification failed");
+  globalMutate("/api/customers");
+  globalMutate("/api/kyc");
+  return data;
+}
+
 // ─── Wallets ─────────────────────────────────────────────────
 
 export function useWallets() {

@@ -10,13 +10,34 @@ export type BridgeCustomerStatus =
   | "paused"
   | "offboarded";
 
-// App-normalized KYC status the UI understands.
-export type AppKycStatus = "not_started" | "pending" | "approved" | "rejected";
+// App-normalized KYC status the UI understands. `incomplete` means the customer
+// has started but Bridge still needs action from them (e.g. a government ID doc).
+export type AppKycStatus =
+  | "not_started"
+  | "incomplete"
+  | "pending"
+  | "approved"
+  | "rejected";
 
 export interface BridgeRejectionReason {
   reason: string;
   developer_reason?: string;
   created_at?: string | null;
+}
+
+// Per-rail/service approval on a customer (e.g. `base` for USD, `sepa` for EUR).
+export interface BridgeEndorsementRequirements {
+  complete?: string[];
+  pending?: string[];
+  missing?: { all_of?: string[]; any_of?: string[] };
+  issues?: string[];
+}
+
+export interface BridgeEndorsement {
+  name: string;
+  status: string; // approved | incomplete | revoked …
+  additional_requirements?: string[];
+  requirements?: BridgeEndorsementRequirements;
 }
 
 export interface BridgeCustomer {
@@ -34,6 +55,7 @@ export interface BridgeCustomer {
   requirements_due?: string[];
   future_requirements_due?: string[];
   capabilities?: Record<string, string>;
+  endorsements?: BridgeEndorsement[];
   has_accepted_terms_of_service?: boolean;
   // Hosted Terms-of-Service acceptance link, returned on the customer object.
   tos_link?: string;
@@ -50,6 +72,62 @@ export interface BridgeKYCLink {
   kyc_status?: string;
   tos_status?: string;
   created_at: string;
+}
+
+// ─── Direct (API-based) KYC ─────────────────────────────────────
+// Submitted straight to Bridge's Customers API instead of the hosted Persona
+// redirect. "little" collects the minimum identity fields (no documents);
+// "advanced" adds ID document images, a profile questionnaire, and proof of
+// address so higher-assurance endorsements (e.g. SEPA) can be requested.
+export type DirectKycMode = "little" | "advanced";
+
+export interface KycAddress {
+  street_line_1: string;
+  street_line_2?: string;
+  city: string;
+  subdivision?: string; // ISO 3166-2 subdivision, WITHOUT the country prefix
+  postal_code: string;
+  country: string; // ISO 3166-1 alpha-3
+}
+
+export interface KycIdentifyingInfo {
+  type: string; // passport | drivers_license | national_id | ssn | …
+  issuing_country: string; // ISO 3166-1 alpha-3
+  number: string;
+  image_front?: string; // data:image/…;base64,… (advanced only)
+  image_back?: string;
+}
+
+export interface KycDocument {
+  purposes: string[]; // e.g. ["proof_of_address"]
+  file: string; // data:image/…;base64,…
+}
+
+// A selectable occupation from Bridge's GET /lists/occupation_codes.
+export interface OccupationCode {
+  display_name: string;
+  code: string;
+}
+
+// Full payload sent to Bridge POST/PUT /customers for direct KYC.
+export interface DirectKycPayload {
+  type: "individual";
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  birth_date: string; // YYYY-MM-DD
+  residential_address: KycAddress;
+  signed_agreement_id: string;
+  endorsements?: string[];
+  identifying_information: KycIdentifyingInfo[];
+  documents?: KycDocument[];
+  // Advanced-only profile questionnaire (required for EEA / high-risk).
+  employment_status?: string;
+  expected_monthly_payments_usd?: string;
+  source_of_funds?: string;
+  account_purpose?: string;
+  most_recent_occupation?: string;
 }
 
 export interface BridgeWallet {

@@ -23,6 +23,7 @@ import {
   Lock,
   Users,
   Wallet,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -67,6 +68,22 @@ export function Sidebar() {
 
       {/* Nav links */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        {!isApproved && (
+          <Link
+            href="/verify"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border",
+              pathname === "/verify"
+                ? "bg-amber-500/20 text-amber-200 border-amber-500/40"
+                : "bg-amber-500/10 text-amber-200 border-amber-500/20 hover:bg-amber-500/15"
+            )}
+          >
+            <ShieldCheck className="w-5 h-5 shrink-0" />
+            Verify identity
+          </Link>
+        )}
+
         {navItems.map((item) => {
           const active = pathname === item.href;
           const locked = !isApproved && isGatedPath(item.href);

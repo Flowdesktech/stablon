@@ -24,6 +24,7 @@ import {
   Inbox,
   Sparkles,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 const quickActions = [
@@ -102,6 +103,54 @@ function AccountSetupBanner() {
   );
 }
 
+// Prompts a linked-but-unverified customer to complete KYC. Hidden once the
+// account is approved (and while a customer hasn't been linked — the setup
+// banner handles that case).
+function VerifyBanner() {
+  const { customer, isLoading } = useCustomer();
+  if (isLoading || !customer?.id) return null;
+
+  const status = customer.kyc_status as string | undefined;
+  if (status === "approved") return null;
+
+  const pending = status === "pending";
+  const incomplete = status === "incomplete";
+
+  const title = pending
+    ? "Verification in review"
+    : incomplete
+      ? "Finish verifying your identity"
+      : "Verify your identity";
+  const description = pending
+    ? "Bridge is reviewing your details. You can review or update your submission if needed."
+    : incomplete
+      ? "A few more steps are needed to finish verification and unlock all features."
+      : "Complete verification to unlock deposits, withdrawals, swaps, and your card.";
+  const ctaLabel = pending
+    ? "Review submission"
+    : incomplete
+      ? "Continue verification"
+      : "Verify identity";
+
+  return (
+    <Card className="relative overflow-hidden border-amber-500/25">
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/5" />
+      <CardContent className="relative p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shrink-0">
+          <ShieldCheck className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-semibold text-white">{title}</p>
+          <p className="text-sm text-white/60 mt-1">{description}</p>
+        </div>
+        <Link href="/verify" className="shrink-0">
+          <Button variant={pending ? "outline" : undefined}>{ctaLabel}</Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { wallets, isLoading: walletsLoading } = useWallets();
@@ -142,6 +191,7 @@ export default function DashboardPage() {
       </div>
 
       <AccountSetupBanner />
+      <VerifyBanner />
 
       {/* Total balance */}
       <Card className="relative overflow-hidden">

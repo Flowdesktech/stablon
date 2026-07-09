@@ -11,6 +11,8 @@ import type {
   BridgeExternalAccount,
   BridgeExchangeRate,
   BridgeRewardsSummary,
+  DirectKycPayload,
+  OccupationCode,
 } from "@/types/bridge";
 
 const API_URL = process.env.BRIDGE_API_URL || "https://api.bridge.xyz/v0";
@@ -70,7 +72,8 @@ async function bridgeFetch<T>(
     "Api-Key": API_KEY,
   };
 
-  // Bridge requires an Idempotency-Key on all mutating (POST) requests.
+  // Bridge requires an Idempotency-Key on POST requests. PUT endpoints reject
+  // the header ("Cannot set Idempotency-Key on this request"), so it's POST-only.
   if (method === "POST") {
     baseHeaders["Idempotency-Key"] = crypto.randomUUID();
   }
@@ -136,6 +139,10 @@ export function deriveKycStatus(
     case "awaiting_ubo":
     case "paused":
       return "pending";
+    // Customer created and part-way through — Bridge still needs action from
+    // them (e.g. a government ID document). Surfaced to the user as "action needed".
+    case "incomplete":
+      return "incomplete";
     default:
       return "not_started";
   }
@@ -192,6 +199,48 @@ export async function getCustomerTosLink(
   customerId: string
 ): Promise<{ url: string }> {
   return bridgeFetch<{ url: string }>(`/customers/${customerId}/tos_acceptance_link`);
+}
+
+// Hosted ToS acceptance URL for a NEW customer (before the customer exists).
+// The returned page redirects back to `redirectUri` with a `signed_agreement_id`
+// query param once the user accepts — that id is required to create a customer
+// via the direct Customers API.
+export async function createTosLink(
+  redirectUri?: string
+): Promise<{ url: string }> {
+  const res = await bridgeFetch<{ url: string }>("/customers/tos_links", {
+    method: "POST",
+  });
+  if (redirectUri && res.url) {
+    const sep = res.url.includes("?") ? "&" : "?";
+    return { url: `${res.url}${sep}redirect_uri=${encodeURIComponent(redirectUri)}` };
+  }
+  return res;
+}
+
+// Valid occupation codes for the `most_recent_occupation` KYC field.
+export async function getOccupationCodes(): Promise<OccupationCode[]> {
+  return bridgeFetch<OccupationCode[]>("/lists/occupation_codes");
+}
+
+// Submits KYC data straight to Bridge. Creates the customer when none is linked
+// yet, otherwise updates the existing one (a full payload is required — Bridge
+// only allows partial updates for a small field subset). Returns the customer
+// with its fresh kyc_status / endorsements.
+export async function submitDirectKyc(
+  customerId: string | null,
+  payload: DirectKycPayload
+): Promise<BridgeCustomer> {
+  if (customerId) {
+    return bridgeFetch<BridgeCustomer>(`/customers/${customerId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  }
+  return bridgeFetch<BridgeCustomer>("/customers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ─── Wallets ─────────────────────────────────────────────────
