@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { signOutUser } from "@/lib/firebase/auth-actions";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useKycStatus } from "@/hooks/use-bridge";
 import { useProfile } from "@/hooks/use-profile";
+import { UserMenu } from "@/components/layout/user-menu";
 import { isGatedPath } from "@/lib/feature-access";
 import {
   LayoutDashboard,
@@ -17,7 +17,6 @@ import {
   TrendingUp,
   ReceiptText,
   Settings,
-  LogOut,
   Menu,
   X,
   Lock,
@@ -46,15 +45,9 @@ const adminNavItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isApproved } = useKycStatus();
   const { isSuperAdmin } = useProfile();
-
-  async function handleSignOut() {
-    await signOutUser();
-    router.push("/");
-  }
 
   const nav = (
     <div className="flex flex-col h-full">
@@ -145,15 +138,9 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Logout */}
+      {/* Account */}
       <div className="p-3 border-t border-white/5">
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all w-full cursor-pointer"
-        >
-          <LogOut className="w-5 h-5" />
-          Sign Out
-        </button>
+        <UserMenu onNavigate={() => setMobileOpen(false)} />
       </div>
     </div>
   );
