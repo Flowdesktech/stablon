@@ -37,6 +37,27 @@ export function isBridgeNotFound(error: unknown): boolean {
   return error instanceof BridgeError && error.status === 404;
 }
 
+// True when we aborted the request because Bridge took too long to respond.
+export function isBridgeTimeout(error: unknown): boolean {
+  return error instanceof BridgeError && error.status === 504;
+}
+
+// True when the request body exceeded Bridge's (or its gateway's) size limit.
+// This surfaces as a 413, or a 500 whose body mentions "entity too large" — the
+// latter happens with oversized base64 document images on the Customers API.
+export function isBridgePayloadTooLarge(error: unknown): boolean {
+  if (!(error instanceof BridgeError)) return false;
+  if (error.status === 413) return true;
+  const parts: string[] = [error.message];
+  if (typeof error.body === "string") parts.push(error.body);
+  else if (error.body && typeof error.body === "object") {
+    const message = (error.body as { message?: unknown }).message;
+    if (typeof message === "string") parts.push(message);
+  }
+  const text = parts.join(" ").toLowerCase();
+  return text.includes("entity too large") || text.includes("payload too large");
+}
+
 // Extracts Bridge's human-readable message from an error, falling back to the
 // generic error text. Avoids leaking the raw `Bridge API 401: {json}` blob.
 //
@@ -45,9 +66,18 @@ export function isBridgeNotFound(error: unknown): boolean {
 // lives under `source.key.<field>` — so we prefer a descriptive field message.
 export function bridgeErrorMessage(error: unknown): string {
   if (error instanceof BridgeError) {
-    const body = error.body as
-      | { message?: string; source?: { key?: Record<string, unknown> } }
-      | undefined;
+    // Actionable messages for the two failure modes callers can recover from.
+    if (isBridgePayloadTooLarge(error)) {
+      return "Your uploaded files are too large. Please upload smaller, compressed images (under 5 MB each) and try again.";
+    }
+    if (isBridgeTimeout(error)) {
+      return "The request timed out. Large photo uploads can take a while — please try smaller images or try again in a moment.";
+    }
+
+    const body =
+      error.body && typeof error.body === "object"
+        ? (error.body as { message?: string; source?: { key?: Record<string, unknown> } })
+        : undefined;
 
     const keyValues = body?.source?.key ? Object.values(body.source.key) : [];
     const descriptive = keyValues.find(
@@ -58,13 +88,25 @@ export function bridgeErrorMessage(error: unknown): string {
     if (body && typeof body.message === "string" && body.message.trim()) {
       return body.message;
     }
+
+    // Opaque / non-JSON body (e.g. an HTML gateway error) — don't leak the raw
+    // `Bridge API 500: <blob>` string to the user.
+    if (error.status >= 500) {
+      return "Our verification provider is temporarily unavailable. Please try again in a moment.";
+    }
+    return "Something went wrong with that request. Please check your details and try again.";
   }
   return error instanceof Error ? error.message : "Internal error";
 }
 
+// Default ceiling for a Bridge round-trip. Endpoints with large uploads (KYC
+// document images) pass a longer timeout via `timeoutMs`.
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 async function bridgeFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {}
 ): Promise<T> {
   const method = (options.method || "GET").toUpperCase();
   const baseHeaders: Record<string, string> = {
@@ -78,13 +120,34 @@ async function bridgeFetch<T>(
     baseHeaders["Idempotency-Key"] = crypto.randomUUID();
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      ...baseHeaders,
-      ...options.headers,
-    },
-  });
+  // Abort the request if Bridge doesn't respond in time so callers get a clean
+  // 504 rather than a hung request.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        ...baseHeaders,
+        ...options.headers,
+      },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new BridgeError(504, { message: "Request timed out" }, "Request timed out");
+    }
+    // Network-level failure (DNS, connection reset, etc.).
+    throw new BridgeError(
+      502,
+      { message: "Could not reach the verification provider" },
+      err instanceof Error ? err.message : "Network error"
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const rawText = await res.text();
@@ -231,16 +294,20 @@ export async function submitDirectKyc(
   customerId: string | null,
   payload: DirectKycPayload
 ): Promise<BridgeCustomer> {
+  // Document images can make this payload large, so allow extra time.
+  const timeout = { timeoutMs: 60_000 };
   if (customerId) {
-    return bridgeFetch<BridgeCustomer>(`/customers/${customerId}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    return bridgeFetch<BridgeCustomer>(
+      `/customers/${customerId}`,
+      { method: "PUT", body: JSON.stringify(payload) },
+      timeout
+    );
   }
-  return bridgeFetch<BridgeCustomer>("/customers", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return bridgeFetch<BridgeCustomer>(
+    "/customers",
+    { method: "POST", body: JSON.stringify(payload) },
+    timeout
+  );
 }
 
 // ─── Wallets ─────────────────────────────────────────────────

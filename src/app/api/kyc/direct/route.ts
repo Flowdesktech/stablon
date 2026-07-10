@@ -14,6 +14,13 @@ function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
+// ~5 MB per image once base64-encoded. Bridge's upload gateway rejects larger
+// payloads with a 413 / "entity too large", so we catch it up front for a fast,
+// clear message instead of a slow failed round-trip.
+const MAX_IMAGE_CHARS = 7_000_000;
+const TOO_LARGE_MESSAGE =
+  "Your uploaded files are too large. Please upload smaller, compressed images (under 5 MB each) and try again.";
+
 // Direct (API-based) KYC submission. Builds a Customers API payload from the
 // in-app form and creates or updates the Bridge customer. Sensitive fields
 // (ID numbers, document images) are forwarded straight to Bridge and never
@@ -58,9 +65,16 @@ export async function POST(req: Request) {
 
     if (mode === "advanced") {
       // Higher-assurance tier: require ID image + proof of address.
-      if (str(body.id_image_front)) idInfo.image_front = str(body.id_image_front);
-      if (str(body.id_image_back)) idInfo.image_back = str(body.id_image_back);
+      const imageFront = str(body.id_image_front);
+      const imageBack = str(body.id_image_back);
       const proof = str(body.proof_of_address);
+
+      if ([imageFront, imageBack, proof].some((v) => v.length > MAX_IMAGE_CHARS)) {
+        return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
+      }
+
+      if (imageFront) idInfo.image_front = imageFront;
+      if (imageBack) idInfo.image_back = imageBack;
       if (proof) documents.push({ purposes: ["proof_of_address"], file: proof });
 
       if (!idInfo.image_front) missing.push("front image of your ID");

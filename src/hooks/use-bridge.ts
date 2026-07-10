@@ -86,8 +86,18 @@ export async function submitDirectKyc(payload: Record<string, unknown>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Verification failed");
+  // The response may not be JSON when a proxy/gateway rejects a large upload
+  // (e.g. a 413 HTML page), so parse defensively.
+  const data = await res.json().catch(() => ({} as { error?: string }));
+  if (!res.ok) {
+    const fallback =
+      res.status === 413
+        ? "Your uploaded files are too large. Please upload smaller images and try again."
+        : res.status === 504
+          ? "The request timed out. Please try smaller images or try again."
+          : "Verification failed. Please try again.";
+    throw new Error(data.error || fallback);
+  }
   globalMutate("/api/customers");
   globalMutate("/api/kyc");
   return data;
