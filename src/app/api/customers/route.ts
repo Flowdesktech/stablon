@@ -4,6 +4,9 @@ import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
 import { apiError } from "@/lib/api-error";
 
+// Customer create/fetch waits on Bridge; allow more than the platform default.
+export const maxDuration = 45;
+
 // Returns the customer to the client with a normalized `kyc_status`, and keeps
 // the Firestore `kycStatus` in sync so server-side guards stay accurate.
 async function respondWithCustomer(

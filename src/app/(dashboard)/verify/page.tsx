@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
 import { requestTosLink, submitDirectKyc, useOccupationCodes } from "@/hooks/use-bridge";
@@ -22,12 +21,21 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-const ID_TYPES = [
+// Database-verification ("little") mode identifies the user with a TAX ID
+// (checked against Bridge's databases — no document photo is required). A
+// government photo ID here would still count as a tax id without an image, and
+// would leave the customer stuck on `government_id_document`.
+const TAX_ID_TYPES = [
+  { value: "tin", label: "Tax identification number (TIN)" },
+  { value: "ssn", label: "Social Security number (US)" },
+];
+
+// Full verification uploads photos of a government-issued photo ID.
+const GOV_ID_TYPES = [
   { value: "passport", label: "Passport" },
   { value: "drivers_license", label: "Driver's license" },
   { value: "national_id", label: "National ID" },
   { value: "state_or_provincial_id", label: "State / provincial ID" },
-  { value: "ssn", label: "SSN (US)" },
 ];
 
 const EMPLOYMENT = [
@@ -86,7 +94,15 @@ export default function VerifyPage() {
     [occupations]
   );
 
+  // Switching tier resets the ID type to a valid value for that tier (tax id for
+  // database checks, photo id for document verification).
+  function selectMode(next: DirectKycMode) {
+    setMode(next);
+    setIdType(next === "advanced" ? "passport" : "tin");
+  }
+
   const [mode, setMode] = useState<DirectKycMode>("little");
+  const idTypeOptions = mode === "advanced" ? GOV_ID_TYPES : TAX_ID_TYPES;
   const [signedAgreementId, setSignedAgreementId] = useState("");
   const [tosLoading, setTosLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -103,7 +119,7 @@ export default function VerifyPage() {
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
 
-  const [idType, setIdType] = useState("passport");
+  const [idType, setIdType] = useState("tin");
   const [idCountry, setIdCountry] = useState("");
   const [idNumber, setIdNumber] = useState("");
 
@@ -142,7 +158,9 @@ export default function VerifyPage() {
     try {
       const redirectUri = `${window.location.origin}/kyc-callback`;
       const url = await requestTosLink(redirectUri);
-      window.open(url, "bridge-tos", "width=520,height=720");
+      const popup = window.open(url, "bridge-tos", "width=520,height=720");
+      // Popup blocked → fall back to a full tab so the user can still accept.
+      if (!popup) window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       toast({
         variant: "error",
@@ -160,8 +178,13 @@ export default function VerifyPage() {
   ) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Bridge caps each document image at 15MB (and 24MB combined front+back).
     if (file.size > 15 * 1024 * 1024) {
-      toast({ variant: "error", title: "File too large", description: "Max size is 15MB." });
+      toast({
+        variant: "error",
+        title: "File too large",
+        description: "Max size is 15MB per file. Please compress it and try again.",
+      });
       return;
     }
     try {
@@ -265,14 +288,14 @@ export default function VerifyPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ModeCard
           active={mode === "little"}
-          onClick={() => setMode("little")}
+          onClick={() => selectMode("little")}
           icon={<Zap className="w-5 h-5 text-amber-400" />}
           title="Quick verification"
           desc="Basic details only — no documents. Fastest way to get started."
         />
         <ModeCard
           active={mode === "advanced"}
-          onClick={() => setMode("advanced")}
+          onClick={() => selectMode("advanced")}
           icon={<FileCheck2 className="w-5 h-5 text-purple-400" />}
           title="Full verification"
           desc="Adds ID documents & proof of address. Unlocks EUR / SEPA and higher limits."
@@ -348,7 +371,13 @@ export default function VerifyPage() {
             <Field label="Country (3-letter code)">
               <Input
                 value={country}
-                onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  const v = e.target.value.toUpperCase();
+                  setCountry(v);
+                  // In quick mode the tax id is keyed to the country of residence,
+                  // so keep the identifier country in sync as a sensible default.
+                  if (!idCountry) setIdCountry(v);
+                }}
                 placeholder="USA, GBR, ARG…"
                 maxLength={3}
               />
@@ -363,16 +392,16 @@ export default function VerifyPage() {
           <CardTitle className="text-base">3. Identity document</CardTitle>
           <CardDescription>
             {mode === "advanced"
-              ? "Provide your ID number and upload photos of the document."
-              : "Provide a government ID or tax number."}
+              ? "Provide your government photo ID and upload photos of it."
+              : "Provide the tax ID number for your country of residence (no photo needed)."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Document type">
-              <Select value={idType} onChange={setIdType} options={ID_TYPES} />
+            <Field label={mode === "advanced" ? "Document type" : "Identifier type"}>
+              <Select value={idType} onChange={setIdType} options={idTypeOptions} />
             </Field>
-            <Field label="Issuing country (3-letter)">
+            <Field label={mode === "advanced" ? "Issuing country (3-letter)" : "Country of residence (3-letter)"}>
               <Input
                 value={idCountry}
                 onChange={(e) => setIdCountry(e.target.value.toUpperCase())}

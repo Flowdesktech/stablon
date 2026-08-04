@@ -5,6 +5,10 @@ import { isSupportedDestination, DESTINATION_CHAINS } from "@/lib/bridge-chains"
 import { apiError } from "@/lib/api-error";
 import type { BridgeVirtualAccount, AppVirtualAccount } from "@/types/bridge";
 
+// Virtual-account provisioning waits on Bridge; allow more than the platform
+// default function duration.
+export const maxDuration = 45;
+
 // Developer fee (percent) taken on incoming virtual-account deposits.
 // Configurable via env; defaults to 1%.
 const DEVELOPER_FEE_PERCENT = process.env.BRIDGE_DEVELOPER_FEE_PERCENT || "0";

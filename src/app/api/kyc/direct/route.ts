@@ -14,12 +14,56 @@ function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-// ~5 MB per image once base64-encoded. Bridge's upload gateway rejects larger
-// payloads with a 413 / "entity too large", so we catch it up front for a fast,
-// clear message instead of a slow failed round-trip.
-const MAX_IMAGE_CHARS = 7_000_000;
+// Bridge's limits: each document image ≤ 15MB, and front+back combined ≤ 24MB.
+// We compare against the base64 data-uri length (~1.34x the raw bytes) and fail
+// fast with a clear message instead of a slow failed Bridge round-trip.
+const MAX_IMAGE_CHARS = Math.floor(15 * 1024 * 1024 * 1.4); // ≈ per-image
+const MAX_COMBINED_ID_CHARS = Math.floor(24 * 1024 * 1024 * 1.4); // ≈ front+back
 const TOO_LARGE_MESSAGE =
-  "Your uploaded files are too large. Please upload smaller, compressed images (under 5 MB each) and try again.";
+  "Your uploaded files are too large. Please upload smaller, compressed images (max 15MB each, 24MB combined) and try again.";
+
+// Tax-id types (database check — no photo needed) vs. government photo-id types
+// (photo required). Sending a photo-id type without an image leaves the customer
+// stuck on the `government_id_document` requirement, so we validate the pairing.
+const TAX_ID_TYPES = new Set([
+  "ssn",
+  "itin",
+  "tin",
+  "cpf",
+  "curp",
+  "rfc",
+  "nino",
+  "utr",
+  "nif",
+  "nie",
+  "cf",
+  "bsn",
+  "sin",
+  "pan",
+  "tfn",
+  "rut",
+  "nit",
+  "dni",
+  "pesel",
+]);
+const GOV_ID_TYPES = new Set([
+  "passport",
+  "drivers_license",
+  "national_id",
+  "state_or_provincial_id",
+  "permanent_residency_id",
+  "visa",
+  "military_id",
+  "matriculate_id",
+]);
+
+const BIRTH_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// This route uploads base64 document images to Bridge and waits on their
+// verification, which can be slow. Give the serverless function enough room to
+// outlast Bridge's 60s upload timeout instead of being killed by the platform's
+// shorter default. On Vercel, functions are fluid-compute billed while waiting.
+export const maxDuration = 90;
 
 // Direct (API-based) KYC submission. Builds a Customers API payload from the
 // in-app form and creates or updates the Bridge customer. Sensitive fields
@@ -30,6 +74,14 @@ export async function POST(req: Request) {
     const guard = await requireUser();
     if ("error" in guard) return guard.error;
     const { user } = guard;
+
+    // Fail fast on oversized uploads (base64 images) instead of buffering a huge
+    // body and hitting a platform limit with an opaque error. ~2.5x the largest
+    // valid image set (24MB front+back + proof of address) as JSON overhead.
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (contentLength > 80_000_000) {
+      return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const mode: DirectKycMode = body.mode === "advanced" ? "advanced" : "little";
@@ -55,6 +107,18 @@ export async function POST(req: Request) {
     if (!str(address.postal_code)) missing.push("postal code");
     if (!str(address.country)) missing.push("country");
     if (!idType || !idCountry || !idNumber) missing.push("ID document details");
+    if (birthDate && !BIRTH_DATE_RE.test(birthDate)) {
+      return NextResponse.json(
+        { error: "Date of birth must be in YYYY-MM-DD format." },
+        { status: 400 }
+      );
+    }
+    if (idType && !TAX_ID_TYPES.has(idType) && !GOV_ID_TYPES.has(idType)) {
+      return NextResponse.json(
+        { error: `Unsupported ID type "${idType}". Please choose a valid document type.` },
+        { status: 400 }
+      );
+    }
 
     const idInfo: KycIdentifyingInfo = {
       type: idType,
@@ -71,6 +135,15 @@ export async function POST(req: Request) {
 
       if ([imageFront, imageBack, proof].some((v) => v.length > MAX_IMAGE_CHARS)) {
         return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
+      }
+      if (imageFront.length + imageBack.length > MAX_COMBINED_ID_CHARS) {
+        return NextResponse.json(
+          {
+            error:
+              "Your ID front and back images together exceed the 24MB limit. Please compress them and try again.",
+          },
+          { status: 413 }
+        );
       }
 
       if (imageFront) idInfo.image_front = imageFront;

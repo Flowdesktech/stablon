@@ -10,6 +10,11 @@ import type {
   BridgeVirtualAccountEvent,
 } from "@/types/bridge";
 
+// Aggregating activity fans out to one Bridge history call per virtual account;
+// allow more than the platform default duration so a user with several accounts
+// isn't cut off mid-aggregation.
+export const maxDuration = 60;
+
 const FIAT_RAILS = ["ach", "wire", "sepa", "pix", "spei", "fps", "faster"];
 
 function isFiatRail(rail: string | undefined) {

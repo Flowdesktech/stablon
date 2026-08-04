@@ -20,6 +20,24 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
+// Parse a mutation response defensively: a proxy/gateway can reject a large
+// upload or a long-running call with a non-JSON (HTML) body, which would make
+// `res.json()` throw an opaque "Unexpected token" instead of a useful message.
+async function readJson(res: Response): Promise<{ error?: string } & Record<string, unknown>> {
+  return res.json().catch(() => ({}));
+}
+
+// Human-readable fallback for a failed mutation when no `error` field came back.
+function mutationErrorMessage(res: Response, data: { error?: string }, fallback: string): string {
+  if (data.error) return data.error;
+  if (res.status === 413)
+    return "Your uploaded files are too large. Please upload smaller images and try again.";
+  if (res.status === 504) return "The request timed out. Please try again.";
+  if (res.status === 401 || res.status === 403) return "Your session has expired. Please sign in again.";
+  if (res.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+  return fallback;
+}
+
 // ─── Customer / KYC ──────────────────────────────────────────
 
 export function useCustomer() {
@@ -29,8 +47,8 @@ export function useCustomer() {
 
 export async function createBridgeCustomer() {
   const res = await fetch("/api/customers", { method: "POST" });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't set up your account"));
   globalMutate("/api/customers");
   return data;
 }
@@ -48,8 +66,8 @@ export function useKYCLink() {
 
 export async function startKYC() {
   const res = await fetch("/api/kyc", { method: "POST" });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't load verification"));
   globalMutate("/api/kyc");
   return data;
 }
@@ -62,8 +80,8 @@ export async function requestTosLink(redirectUri: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ redirect_uri: redirectUri }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Couldn't start Terms of Service");
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't start Terms of Service"));
   return data.url as string;
 }
 
@@ -86,18 +104,8 @@ export async function submitDirectKyc(payload: Record<string, unknown>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  // The response may not be JSON when a proxy/gateway rejects a large upload
-  // (e.g. a 413 HTML page), so parse defensively.
-  const data = await res.json().catch(() => ({} as { error?: string }));
-  if (!res.ok) {
-    const fallback =
-      res.status === 413
-        ? "Your uploaded files are too large. Please upload smaller images and try again."
-        : res.status === 504
-          ? "The request timed out. Please try smaller images or try again."
-          : "Verification failed. Please try again.";
-    throw new Error(data.error || fallback);
-  }
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Verification failed. Please try again."));
   globalMutate("/api/customers");
   globalMutate("/api/kyc");
   return data;
@@ -117,8 +125,8 @@ export async function createWallet(network: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ network }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't create wallet"));
     globalMutate("/api/wallets");
     toast({ variant: "success", title: "Wallet created", description: `Your ${network} wallet is ready.` });
     return data;
@@ -148,8 +156,8 @@ export async function createTransfer(body: Record<string, unknown>) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Transfer failed"));
     globalMutate("/api/transfers");
     toast({ variant: "success", title: "Transfer initiated", description: "Track its progress in your activity." });
     return data;
@@ -183,8 +191,8 @@ export async function createVirtualAccount(params: {
         destination_currency: params.destinationCurrency,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't create account"));
     globalMutate("/api/accounts");
     toast({ variant: "success", title: "Account created", description: `Your ${params.currency.toUpperCase()} account is ready.` });
     return data;
@@ -211,8 +219,8 @@ export async function updateVirtualAccountDestination(params: {
         destination_currency: params.destinationCurrency,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't update destination"));
     globalMutate("/api/accounts");
     toast({ variant: "success", title: "Destination updated", description: "Incoming deposits will settle to the new address." });
     return data;
@@ -236,8 +244,8 @@ export async function addExternalAccount(body: Record<string, unknown>) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't add bank account"));
     globalMutate("/api/external-accounts");
     toast({ variant: "success", title: "Bank account added", description: "You can now withdraw to this account." });
     return data;
@@ -261,8 +269,8 @@ export async function provisionCard(settlementCurrency = "usd") {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ settlement_currency: settlementCurrency }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't issue card"));
     globalMutate("/api/cards");
     toast({ variant: "success", title: "Card issued", description: "Your new card is ready to use." });
     return data;
@@ -286,8 +294,8 @@ export async function toggleCardFreeze(cardAccountId: string, freeze: boolean) {
       method: "POST",
     });
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error);
+      const data = await readJson(res);
+      throw new Error(mutationErrorMessage(res, data, freeze ? "Couldn't freeze card" : "Couldn't unfreeze card"));
     }
     globalMutate("/api/cards");
     toast({

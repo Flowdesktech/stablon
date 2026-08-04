@@ -3,6 +3,9 @@ import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { apiError } from "@/lib/api-error";
 
+// Transfers wait on Bridge's orchestration; allow more than the platform default.
+export const maxDuration = 45;
+
 export async function GET() {
   try {
     const guard = await requireUser();

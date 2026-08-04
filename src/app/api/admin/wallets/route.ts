@@ -9,6 +9,10 @@ interface AdminWallet extends BridgeWallet {
   owner: { uid: string; email: string; name: string | null };
 }
 
+// This fans out to one Bridge call per customer; a large user base needs more
+// than the platform default function duration.
+export const maxDuration = 60;
+
 // Admin: aggregate wallets across every user linked to a Bridge customer. Each
 // customer's wallets are fetched independently; a failure for one customer
 // won't sink the whole response.
