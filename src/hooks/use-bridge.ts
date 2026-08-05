@@ -23,8 +23,8 @@ const fetcher = async (url: string) => {
 // Parse a mutation response defensively: a proxy/gateway can reject a large
 // upload or a long-running call with a non-JSON (HTML) body, which would make
 // `res.json()` throw an opaque "Unexpected token" instead of a useful message.
-async function readJson(res: Response): Promise<{ error?: string } & Record<string, unknown>> {
-  return res.json().catch(() => ({}));
+async function readJson<T = Record<string, unknown>>(res: Response): Promise<{ error?: string } & T> {
+  return res.json().catch(() => ({}) as { error?: string } & T);
 }
 
 // Human-readable fallback for a failed mutation when no `error` field came back.
@@ -66,7 +66,13 @@ export function useKYCLink() {
 
 export async function startKYC() {
   const res = await fetch("/api/kyc", { method: "POST" });
-  const data = await readJson(res);
+  const data = await readJson<{
+    customer_id?: string;
+    kyc_link?: string;
+    tos_link?: string | null;
+    tos_accepted?: boolean;
+    kyc_status?: string;
+  }>(res);
   if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't load verification"));
   globalMutate("/api/kyc");
   return data;
