@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useWallets, useExchangeRate, createTransfer, useTransfers } from "@/hooks/use-bridge";
 import { formatDate } from "@/lib/utils";
+import { aggregateWalletBalances } from "@/lib/bridge";
 import type { BridgeWallet, BridgeTransfer } from "@/types/bridge";
 import {
   ArrowLeftRight,
@@ -45,10 +46,8 @@ export default function SwapPage() {
 
   const balanceMap = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const w of wallets as BridgeWallet[]) {
-      for (const [currency, amount] of Object.entries(w.balances || {})) {
-        map[currency.toLowerCase()] = (map[currency.toLowerCase()] || 0) + parseFloat(amount);
-      }
+    for (const { currency, amount } of aggregateWalletBalances(wallets as BridgeWallet[])) {
+      map[currency] = amount;
     }
     return map;
   }, [wallets]);

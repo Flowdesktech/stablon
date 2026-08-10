@@ -130,6 +130,13 @@ export interface DirectKycPayload {
   most_recent_occupation?: string;
 }
 
+export interface BridgeWalletBalance {
+  balance: string;
+  currency: string;
+  chain?: string;
+  contract_address?: string;
+}
+
 export interface BridgeWallet {
   id: string;
   customer_id: string;
@@ -137,7 +144,8 @@ export interface BridgeWallet {
   network: string;
   chain?: string;
   address: string;
-  balances: Record<string, string>;
+  // Bridge returns balances as an array of per-token entries (not a map).
+  balances: BridgeWalletBalance[];
   created_at: string;
 }
 

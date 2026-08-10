@@ -24,11 +24,18 @@ function shorten(address: string) {
   return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
-function formatBalances(balances: Record<string, string> | undefined) {
+function formatBalances(balances: BridgeWallet["balances"] | undefined) {
   if (!balances) return "—";
-  const entries = Object.entries(balances).filter(([, v]) => Number(v) > 0);
+  // Bridge returns an array of { balance, currency } entries.
+  const entries = Array.isArray(balances)
+    ? balances
+        .filter((e) => Number(e?.balance) > 0)
+        .map((e) => `${e.balance} ${(e.currency ?? "").toUpperCase()}`)
+    : Object.entries(balances)
+        .filter(([, v]) => Number(v) > 0)
+        .map(([k, v]) => `${v} ${k.toUpperCase()}`);
   if (entries.length === 0) return "0";
-  return entries.map(([k, v]) => `${v} ${k.toUpperCase()}`).join(", ");
+  return entries.join(", ");
 }
 
 export function AdminWalletsTable() {

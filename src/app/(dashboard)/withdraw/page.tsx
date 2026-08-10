@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useExternalAccounts, addExternalAccount, useTransfers, createTransfer, useWallets } from "@/hooks/use-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { walletBalanceOf } from "@/lib/bridge";
 import type { BridgeExternalAccount, BridgeTransfer, BridgeWallet } from "@/types/bridge";
 import {
   ArrowUpFromLine,
@@ -62,8 +63,7 @@ export default function WithdrawPage() {
   const [cryptoSubmitted, setCryptoSubmitted] = useState(false);
 
   const usdBalance = (wallets as BridgeWallet[]).reduce((sum, w) => {
-    const bal = parseFloat(w.balances?.usd || w.balances?.usdc || "0");
-    return sum + bal;
+    return sum + walletBalanceOf(w.balances, "usd") + walletBalanceOf(w.balances, "usdc");
   }, 0);
 
   const activeNetwork = onChainNetworks.find((n) => n.id === network) ?? onChainNetworks[0];

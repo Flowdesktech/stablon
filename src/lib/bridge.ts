@@ -312,13 +312,59 @@ export async function submitDirectKyc(
 
 // ─── Wallets ─────────────────────────────────────────────────
 
+// Bridge returns wallet balances as an array of { balance, currency, ... }
+// entries. Older code (and some defensive paths) may hold a { currency: amount }
+// map instead — these helpers read either shape safely.
+
+/** Sum of a single currency across a balances list (array or legacy map). */
+export function walletBalanceOf(
+  balances: BridgeWallet["balances"] | Record<string, string> | undefined,
+  currency: string
+): number {
+  if (!balances) return 0;
+  const target = currency.toLowerCase();
+  if (Array.isArray(balances)) {
+    return balances.reduce((sum, e) => {
+      if ((e?.currency ?? "").toLowerCase() !== target) return sum;
+      const n = parseFloat(e?.balance ?? "");
+      return Number.isFinite(n) ? sum + n : sum;
+    }, 0);
+  }
+  const n = parseFloat((balances as Record<string, string>)[target] ?? "0");
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Total per-currency across many wallets, for dashboard/swap aggregation. */
+export function aggregateWalletBalances(
+  wallets: Array<Pick<BridgeWallet, "balances">>
+): Array<{ currency: string; amount: number }> {
+  const totals: Record<string, number> = {};
+  for (const w of wallets) {
+    const balances = w.balances;
+    if (!balances) continue;
+    if (Array.isArray(balances)) {
+      for (const e of balances) {
+        const currency = (e?.currency ?? "").toLowerCase();
+        const n = parseFloat(e?.balance ?? "");
+        if (currency && Number.isFinite(n)) totals[currency] = (totals[currency] || 0) + n;
+      }
+    } else {
+      for (const [currency, amt] of Object.entries(balances as Record<string, string>)) {
+        const n = parseFloat(amt);
+        if (Number.isFinite(n)) totals[currency.toLowerCase()] = (totals[currency.toLowerCase()] || 0) + n;
+      }
+    }
+  }
+  return Object.entries(totals).map(([currency, amount]) => ({ currency, amount }));
+}
+
 // Bridge's wallet API speaks `chain`; the rest of the app uses `network`, so we
 // translate on the way in and normalize `chain` → `network` on the way out.
 function normalizeWallet(wallet: BridgeWallet & { chain?: string }): BridgeWallet {
   return {
     ...wallet,
     network: wallet.network ?? wallet.chain ?? "",
-    balances: wallet.balances ?? {},
+    balances: wallet.balances ?? [],
   };
 }
 

@@ -10,6 +10,7 @@ import { useWallets, useTransfers, useActivity, useCustomer, createBridgeCustome
 import { ActivityRow } from "@/components/activity/activity-row";
 import { toast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
+import { aggregateWalletBalances } from "@/lib/bridge";
 import type { BridgeWallet, ActivityItem } from "@/types/bridge";
 import {
   ArrowDownToLine,
@@ -39,13 +40,7 @@ const currencyIcons: Record<string, typeof DollarSign> = {
 };
 
 function aggregateBalances(wallets: BridgeWallet[]) {
-  const totals: Record<string, number> = {};
-  for (const w of wallets) {
-    for (const [currency, amount] of Object.entries(w.balances || {})) {
-      totals[currency] = (totals[currency] || 0) + parseFloat(amount);
-    }
-  }
-  return Object.entries(totals).map(([currency, amount]) => ({ currency, amount }));
+  return aggregateWalletBalances(wallets);
 }
 
 

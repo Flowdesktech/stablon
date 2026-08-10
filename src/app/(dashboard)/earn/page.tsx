@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRewards, useRewardsHistory, useWallets } from "@/hooks/use-bridge";
 import { formatDate } from "@/lib/utils";
+import { walletBalanceOf } from "@/lib/bridge";
 import type { BridgeWallet } from "@/types/bridge";
 import {
   TrendingUp,
@@ -21,9 +22,10 @@ export default function EarnPage() {
   const { history, isLoading: historyLoading } = useRewardsHistory();
   const { wallets } = useWallets();
 
-  const usdbBalance = (wallets as BridgeWallet[]).reduce((sum, w) => {
-    return sum + parseFloat(w.balances?.usdb || "0");
-  }, 0);
+  const usdbBalance = (wallets as BridgeWallet[]).reduce(
+    (sum, w) => sum + walletBalanceOf(w.balances, "usdb"),
+    0
+  );
 
   const totalEarned = rewards?.total_earned ? parseFloat(rewards.total_earned) : 0;
   const currentApy = rewards?.current_apy || "5.0";
