@@ -15,7 +15,11 @@ import {
   useVirtualAccounts,
   createVirtualAccount,
   updateVirtualAccountDestination,
+  requestVirtualAccountFeeInvoice,
+  FeeRequiredError,
 } from "@/hooks/use-bridge";
+import { toast } from "@/components/ui/toast";
+import { useSearchParams } from "next/navigation";
 import { CopyAllButton } from "@/components/copy-all-button";
 import { buildAccountDetailsText } from "@/lib/account-details";
 import type { AppVirtualAccount } from "@/types/bridge";
@@ -262,6 +266,9 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
 
 export default function AccountsPage() {
   const { accounts, isLoading, mutate } = useVirtualAccounts();
+  const searchParams = useSearchParams();
+  const paidParam = searchParams.get("paid");
+  const cancelledParam = searchParams.get("payment");
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fiatCurrency, setFiatCurrency] = useState("usd");
@@ -290,8 +297,24 @@ export default function AccountsPage() {
       });
       setCreating(false);
       setDestinationAddress("");
-    } catch {
-      // Errors are surfaced via toast in the hook.
+    } catch (err) {
+      if (err instanceof FeeRequiredError) {
+        // Setup fee not paid yet: send the user to the NOWPayments invoice.
+        try {
+          const invoiceUrl = await requestVirtualAccountFeeInvoice();
+          if (invoiceUrl) {
+            window.location.href = invoiceUrl;
+            return;
+          }
+        } catch (payErr) {
+          toast({
+            variant: "error",
+            title: "Couldn't start the payment",
+            description: payErr instanceof Error ? payErr.message : "Please try again.",
+          });
+        }
+      }
+      // Other errors are surfaced via toast in the hook.
     } finally {
       setSubmitting(false);
       mutate();
@@ -309,6 +332,21 @@ export default function AccountsPage() {
           <Plus className="w-4 h-4" /> New Account
         </Button>
       </div>
+
+      {paidParam === "1" && (
+        <Card className="border-emerald-500/30 bg-emerald-500/[0.05]">
+          <CardContent className="p-4 text-sm text-emerald-300">
+            Payment received. Once it confirms on-chain you can create your account — try again in a moment.
+          </CardContent>
+        </Card>
+      )}
+      {cancelledParam === "cancelled" && (
+        <Card className="border-amber-500/30 bg-amber-500/[0.05]">
+          <CardContent className="p-4 text-sm text-amber-300">
+            Payment was cancelled. A one-time setup fee is required to create a virtual account.
+          </CardContent>
+        </Card>
+      )}
 
       {creating && (
         <Card className="border-purple-500/30">
@@ -386,6 +424,10 @@ export default function AccountsPage() {
                 {coin.toUpperCase()} on {selectedChain.label} will be delivered to this address.
               </p>
             </div>
+
+            <p className="text-xs text-white/40">
+              A one-time setup fee (payable in crypto) is required before your first account is created.
+            </p>
 
             <Button
               className="w-full"

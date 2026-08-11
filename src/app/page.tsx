@@ -386,9 +386,14 @@ export default function LandingPage() {
             </div>
             <span className="text-sm text-white/50">Stablon Platform</span>
           </div>
-          <p className="text-xs text-white/30">
-            Built with Bridge.xyz stablecoin infrastructure. Demo application.
-          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/contact" className="text-sm text-white/50 hover:text-white transition-colors">
+              Contact us
+            </Link>
+            <p className="text-xs text-white/30">
+              Built with Bridge.xyz stablecoin infrastructure. Demo application.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

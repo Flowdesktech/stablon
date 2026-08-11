@@ -73,6 +73,13 @@ export async function POST(req: Request) {
     if ("error" in guard) return guard.error;
     const { user } = guard;
 
+    // Virtual accounts cost us a per-account fee from Bridge, so require the
+    // one-time setup fee (paid via NOWPayments) before provisioning. The UI
+    // treats 402 as "show the payment step" rather than a generic error.
+    if (!user.vaFeePaid) {
+      return NextResponse.json({ error: "fee_required" }, { status: 402 });
+    }
+
     const body = await req.json();
     const sourceCurrency = (body.currency || "usd").toLowerCase();
     const address = (body.destination_address || "").trim();

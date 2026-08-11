@@ -23,6 +23,7 @@ import {
   Users,
   Wallet,
   ShieldCheck,
+  LifeBuoy,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +37,7 @@ const navItems = [
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/earn", label: "Earn", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/contact", label: "Support", icon: LifeBuoy },
 ];
 
 const adminNavItems = [

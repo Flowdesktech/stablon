@@ -18,6 +18,9 @@ export interface UserDoc {
   // When true, the user is blocked from signing in. A super admin can still
   // impersonate them (impersonation doesn't go through the normal login gate).
   loginDisabled: boolean;
+  // When true, the user has paid the one-time virtual-account setup fee and may
+  // create virtual accounts. Flipped by the NOWPayments IPN webhook.
+  vaFeePaid: boolean;
 }
 
 const COLLECTION = "users";
@@ -39,6 +42,7 @@ function withDefaults(uid: string, data: Record<string, unknown>): UserDoc {
     appLockHash: (data.appLockHash as string) ?? null,
     superAdmin: Boolean(data.superAdmin),
     loginDisabled: Boolean(data.loginDisabled),
+    vaFeePaid: Boolean(data.vaFeePaid),
   };
 }
 

@@ -11,11 +11,37 @@ function notifyError(title: string, err: unknown) {
   });
 }
 
+// Thrown by createVirtualAccount when the server requires the one-time setup
+// fee (HTTP 402). The UI catches this to redirect to the NOWPayments invoice
+// instead of showing an error toast.
+export class FeeRequiredError extends Error {
+  constructor() {
+    super("fee_required");
+    this.name = "FeeRequiredError";
+  }
+}
+
+// Asks the backend for a NOWPayments hosted invoice for the virtual-account
+// setup fee. Returns the invoice URL to redirect the user to, or null when the
+// fee was already paid.
+export async function requestVirtualAccountFeeInvoice(): Promise<string | null> {
+  const res = await fetch("/api/billing/virtual-account-fee", { method: "POST" });
+  const data = await readJson<{ invoiceUrl?: string; alreadyPaid?: boolean }>(res);
+  if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't start the payment"));
+  if (data.alreadyPaid) return null;
+  if (!data.invoiceUrl) throw new Error("Couldn't start the payment. Please try again.");
+  return data.invoiceUrl;
+}
+
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+    const err = new Error(body.error || `Request failed: ${res.status}`);
+    // Attach the HTTP status so callers can distinguish a 400 (e.g. an
+    // unsupported swap pair) from a transient server error.
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
   }
   return res.json();
 };
@@ -198,12 +224,14 @@ export async function createVirtualAccount(params: {
       }),
     });
     const data = await readJson(res);
+    if (res.status === 402) throw new FeeRequiredError();
     if (!res.ok) throw new Error(mutationErrorMessage(res, data, "Couldn't create account"));
     globalMutate("/api/accounts");
     toast({ variant: "success", title: "Account created", description: `Your ${params.currency.toUpperCase()} account is ready.` });
     return data;
   } catch (err) {
-    notifyError("Couldn't create account", err);
+    // The fee gate redirects to a payment page rather than surfacing an error.
+    if (!(err instanceof FeeRequiredError)) notifyError("Couldn't create account", err);
     throw err;
   }
 }

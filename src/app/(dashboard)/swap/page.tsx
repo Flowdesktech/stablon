@@ -22,18 +22,40 @@ import {
   Inbox,
 } from "lucide-react";
 
-const supportedCurrencies = [
-  { id: "usdc", name: "USDC", fullName: "USD Coin" },
-  { id: "usdt", name: "USDT", fullName: "Tether" },
-  { id: "usdb", name: "USDB", fullName: "Bridge USD" },
-  { id: "usd", name: "USD", fullName: "US Dollar" },
-  { id: "eur", name: "EUR", fullName: "Euro" },
+// Bridge's exchange-rates API only quotes these pairs: USD ↔ BRL, COP, EUR,
+// GBP, MXN, USDT. Of those we surface the ones this app supports (MXN/BRL were
+// removed). Crypto like USDC/USDB is NOT directly convertible to fiat here, so
+// we only list currencies that have a real rate.
+const SWAP_PAIRS: Array<[string, string]> = [
+  ["usd", "eur"],
+  ["usd", "gbp"],
+  ["usd", "usdt"],
 ];
+
+const CURRENCY_META: Record<string, { name: string; fullName: string }> = {
+  usd: { name: "USD", fullName: "US Dollar" },
+  eur: { name: "EUR", fullName: "Euro" },
+  gbp: { name: "GBP", fullName: "British Pound" },
+  usdt: { name: "USDT", fullName: "Tether" },
+};
+
+// All currencies that appear in at least one swappable pair.
+const SWAP_CURRENCIES = Array.from(new Set(SWAP_PAIRS.flat()));
+
+// Currencies a given currency can convert to (either direction of a pair).
+function availableTargets(from: string): string[] {
+  const targets = new Set<string>();
+  for (const [a, b] of SWAP_PAIRS) {
+    if (a === from) targets.add(b);
+    if (b === from) targets.add(a);
+  }
+  return Array.from(targets);
+}
 
 export default function SwapPage() {
   const { wallets } = useWallets();
   const { transfers } = useTransfers();
-  const [fromCurrency, setFromCurrency] = useState("usdc");
+  const [fromCurrency, setFromCurrency] = useState("usd");
   const [toCurrency, setToCurrency] = useState("eur");
   const [fromAmount, setFromAmount] = useState("");
   const [showFromPicker, setShowFromPicker] = useState(false);
@@ -41,8 +63,18 @@ export default function SwapPage() {
   const [swapped, setSwapped] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
-  const { rate: exchangeRateData } = useExchangeRate(fromCurrency, toCurrency);
+  const { rate: exchangeRateData, error: rateError } = useExchangeRate(fromCurrency, toCurrency);
   const rateValue = exchangeRateData?.rate ? parseFloat(exchangeRateData.rate) : null;
+
+  // Bridge returns a 400 ("Exchange rate from X to Y is not supported") when a
+  // pair has no route. Detect that so we can show a friendly message and block
+  // the swap, instead of surfacing the raw error text.
+  const rateStatus = (rateError as (Error & { status?: number }) | undefined)?.status;
+  const rateErrorMessage = (rateError?.message || "").toLowerCase();
+  const pairUnsupported =
+    rateStatus === 400 ||
+    rateErrorMessage.includes("not supported") ||
+    rateErrorMessage.includes("exchange rate");
 
   const balanceMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -52,10 +84,22 @@ export default function SwapPage() {
     return map;
   }, [wallets]);
 
-  const currencies = supportedCurrencies.map((c) => ({
-    ...c,
-    balance: (balanceMap[c.id] || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }),
+  const fromBalance = balanceMap[fromCurrency] ?? 0;
+  const fromAmountNum = parseFloat(fromAmount);
+  const insufficientBalance =
+    Boolean(fromAmount) && Number.isFinite(fromAmountNum) && fromAmountNum > fromBalance;
+  const swapReady =
+    Boolean(fromAmount) && rateValue !== null && !pairUnsupported && !insufficientBalance;
+
+  const currencies = SWAP_CURRENCIES.map((id) => ({
+    id,
+    ...CURRENCY_META[id],
+    balance: (balanceMap[id] || 0).toLocaleString("en-US", { minimumFractionDigits: 2 }),
   }));
+
+  // "To" options limited to what the selected "from" currency can actually
+  // convert to.
+  const toOptions = currencies.filter((c) => availableTargets(fromCurrency).includes(c.id));
 
   const fromCurrencyData = currencies.find((c) => c.id === fromCurrency)!;
   const toCurrencyData = currencies.find((c) => c.id === toCurrency)!;
@@ -95,7 +139,10 @@ export default function SwapPage() {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-white">Swap</h1>
-        <p className="text-white/50 mt-1">Convert between currencies and stablecoins instantly</p>
+        <p className="text-white/50 mt-1">
+          Convert between supported currencies instantly.{" "}
+          <span className="text-white/70">Available pairs: USD ↔ EUR, USD ↔ GBP, USD ↔ USDT.</span>
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
@@ -129,7 +176,16 @@ export default function SwapPage() {
                         {currencies.filter((c) => c.id !== toCurrency).map((c) => (
                           <button
                             key={c.id}
-                            onClick={() => { setFromCurrency(c.id); setShowFromPicker(false); }}
+                            onClick={() => {
+                              setFromCurrency(c.id);
+                              setShowFromPicker(false);
+                              // If the current target isn't reachable from the new
+                              // source, snap to the first available target.
+                              if (!availableTargets(c.id).includes(toCurrency)) {
+                                const next = availableTargets(c.id)[0];
+                                if (next) setToCurrency(next);
+                              }
+                            }}
                             className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer"
                           >
                             <span className="font-medium">{c.name}</span>
@@ -147,6 +203,11 @@ export default function SwapPage() {
                   >
                     Use Max
                   </button>
+                )}
+                {insufficientBalance && (
+                  <p className="text-xs text-red-400 mt-1">
+                    Insufficient {fromCurrencyData.name} balance (available: {fromCurrencyData.balance}).
+                  </p>
                 )}
               </div>
 
@@ -179,7 +240,7 @@ export default function SwapPage() {
                     </button>
                     {showToPicker && (
                       <div className="absolute top-full right-0 mt-2 w-48 rounded-xl bg-[#1a1a2e] border border-white/10 shadow-xl z-10 py-1">
-                        {currencies.filter((c) => c.id !== fromCurrency).map((c) => (
+                        {toOptions.map((c) => (
                           <button
                             key={c.id}
                             onClick={() => { setToCurrency(c.id); setShowToPicker(false); }}
@@ -195,7 +256,15 @@ export default function SwapPage() {
                 </div>
               </div>
 
-              {fromAmount && rateValue && (
+              {pairUnsupported && fromCurrency !== toCurrency && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-amber-300">
+                    This pair isn't available to swap right now ({fromCurrencyData.name} → {toCurrencyData.name}). Try a different currency.
+                  </p>
+                </div>
+              )}
+
+              {fromAmount && rateValue && !pairUnsupported && (
                 <div className="flex items-center justify-between px-2 py-2">
                   <div className="flex items-center gap-1.5 text-xs text-white/40">
                     <RefreshCw className="w-3 h-3" />
@@ -218,7 +287,7 @@ export default function SwapPage() {
                   </div>
                 </div>
               ) : (
-                <Button onClick={handleSwap} className="w-full" disabled={!fromAmount || swapping}>
+                <Button onClick={handleSwap} className="w-full" disabled={!swapReady || swapping}>
                   {swapping ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
                   Swap Now
                 </Button>
@@ -241,9 +310,28 @@ export default function SwapPage() {
                   <span className="text-white/50">{fromCurrencyData.name} / {toCurrencyData.name}</span>
                   <span className="text-white font-mono">{rateValue.toFixed(4)}</span>
                 </div>
+              ) : pairUnsupported ? (
+                <p className="text-xs text-amber-300/80">
+                  {fromCurrencyData.name} → {toCurrencyData.name} isn't a supported swap pair.
+                </p>
               ) : (
                 <p className="text-xs text-white/40">Select currencies to see live rate</p>
               )}
+              <div className="pt-2 border-t border-white/5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">
+                  Supported pairs
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SWAP_PAIRS.map(([a, b]) => (
+                    <span
+                      key={`${a}-${b}`}
+                      className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[11px] text-white/60"
+                    >
+                      {CURRENCY_META[a].name} ↔ {CURRENCY_META[b].name}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <p className="text-xs text-white/30 mt-2">Rates update every ~30 seconds</p>
             </CardContent>
           </Card>
