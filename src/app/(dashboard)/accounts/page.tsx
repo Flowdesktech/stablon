@@ -43,7 +43,7 @@ import {
 // One-time setup fee (USD) charged before the first virtual account is created.
 // Shown prominently so the payment step isn't a surprise. Keep in sync with the
 // server's VIRTUAL_ACCOUNT_FEE_USD.
-const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "10";
+const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "20";
 // Ongoing deposit processing fee (%), mirrored from BRIDGE_DEVELOPER_FEE_PERCENT.
 const DEPOSIT_FEE_PERCENT = process.env.NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT || "3";
 
