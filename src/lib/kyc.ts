@@ -50,6 +50,14 @@ function humanize(code: string): string {
 export function outstandingKycRequirements(
   customer: Pick<BridgeCustomer, "endorsements"> | null | undefined
 ): string[] {
+  return outstandingKycCodes(customer).map((code) => REQUIREMENT_LABELS[code] ?? humanize(code));
+}
+
+// The raw (user-actionable) requirement codes still outstanding, before they're
+// mapped to display labels.
+function outstandingKycCodes(
+  customer: Pick<BridgeCustomer, "endorsements"> | null | undefined
+): string[] {
   const codes = new Set<string>();
   for (const endorsement of customer?.endorsements ?? []) {
     const missing = endorsement.requirements?.missing;
@@ -58,5 +66,17 @@ export function outstandingKycRequirements(
       if (!INTERNAL_REQUIREMENTS.has(code)) codes.add(code);
     }
   }
-  return [...codes].map((code) => REQUIREMENT_LABELS[code] ?? humanize(code));
+  return [...codes];
+}
+
+/**
+ * True when the customer has already submitted their identity and the ONLY thing
+ * Bridge still needs is a tax identification number. In that case the verify
+ * page shows a compact "just your Tax ID" form instead of the full questionnaire.
+ */
+export function onlyTaxIdMissing(
+  customer: Pick<BridgeCustomer, "endorsements"> | null | undefined
+): boolean {
+  const codes = outstandingKycCodes(customer);
+  return codes.length > 0 && codes.every((c) => c === "tax_identification_number");
 }

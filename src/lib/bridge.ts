@@ -12,6 +12,7 @@ import type {
   BridgeExchangeRate,
   BridgeRewardsSummary,
   DirectKycPayload,
+  KycIdentifyingInfo,
   OccupationCode,
 } from "@/types/bridge";
 
@@ -292,7 +293,9 @@ export async function getOccupationCodes(): Promise<OccupationCode[]> {
 // with its fresh kyc_status / endorsements.
 export async function submitDirectKyc(
   customerId: string | null,
-  payload: DirectKycPayload
+  // Updates (PUT) merge into the existing customer, so a partial payload is
+  // allowed — e.g. topping up just a tax ID. Creates (POST) need the full shape.
+  payload: DirectKycPayload | (Partial<DirectKycPayload> & { identifying_information?: KycIdentifyingInfo[] })
 ): Promise<BridgeCustomer> {
   // Document images can make this payload large, so allow extra time.
   const timeout = { timeoutMs: 60_000 };

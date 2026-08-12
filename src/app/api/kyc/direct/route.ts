@@ -3,7 +3,9 @@ import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
 import { apiError } from "@/lib/api-error";
+import { onlyTaxIdMissing } from "@/lib/kyc";
 import type {
+  BridgeCustomer,
   DirectKycMode,
   DirectKycPayload,
   KycDocument,
@@ -126,6 +128,36 @@ export async function POST(req: Request) {
       number: idNumber,
     };
     const documents: KycDocument[] = [];
+
+    // Top-up path: the customer is already on file and the only outstanding
+    // requirement is a tax ID. In that case we send a minimal PUT with just the
+    // tax identifier instead of re-validating/re-submitting the whole profile.
+    if (user.bridgeCustomerId && idType && idNumber) {
+      let existing: BridgeCustomer | null = null;
+      try {
+        existing = await bridge.getCustomer(user.bridgeCustomerId);
+      } catch {
+        existing = null;
+      }
+      if (existing && onlyTaxIdMissing(existing)) {
+        if (!TAX_ID_TYPES.has(idType)) {
+          return NextResponse.json(
+            { error: "Please choose a valid tax ID type (e.g. SSN or TIN)." },
+            { status: 400 }
+          );
+        }
+        const customer = await bridge.submitDirectKyc(user.bridgeCustomerId, {
+          identifying_information: [idInfo],
+        });
+        const kyc_status = bridge.deriveKycStatus(customer);
+        await updateUserDoc(user.uid, { kycStatus: kyc_status });
+        return NextResponse.json({
+          customer_id: customer.id,
+          kyc_status,
+          endorsements: customer.endorsements ?? [],
+        });
+      }
+    }
 
     if (mode === "advanced") {
       // Higher-assurance tier: require ID image + proof of address.

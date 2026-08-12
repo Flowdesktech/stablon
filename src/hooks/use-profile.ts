@@ -9,6 +9,7 @@ export interface Profile {
   kycStatus: string;
   twoFactorEnabled: boolean;
   superAdmin: boolean;
+  vaFeePaid: boolean;
   impersonating: boolean;
 }
 

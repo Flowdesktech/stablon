@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
-import { requestTosLink, submitDirectKyc, useOccupationCodes } from "@/hooks/use-bridge";
-import type { DirectKycMode } from "@/types/bridge";
+import { requestTosLink, submitDirectKyc, useCustomer, useOccupationCodes } from "@/hooks/use-bridge";
+import { onlyTaxIdMissing } from "@/lib/kyc";
+import type { BridgeCustomer, DirectKycMode } from "@/types/bridge";
 import {
   ShieldCheck,
   Zap,
@@ -87,7 +88,12 @@ function fileToDataUrl(file: File): Promise<string> {
 export default function VerifyPage() {
   const router = useRouter();
   const { profile, mutate } = useProfile();
+  const { customer } = useCustomer();
   const { occupations, isLoading: occupationsLoading } = useOccupationCodes();
+
+  // When the customer is already on file and the ONLY outstanding requirement is
+  // a tax ID, show a compact "just your Tax ID" form instead of the whole flow.
+  const taxIdTopUp = onlyTaxIdMissing(customer as BridgeCustomer | null);
 
   const occupationOptions = useMemo(
     () => occupations.map((o) => ({ value: o.code, label: o.display_name })),
@@ -139,6 +145,14 @@ export default function VerifyPage() {
     setFirstName(parts[0] ?? "");
     setLastName(parts.slice(1).join(" ") || "");
   }, [profile?.name, firstName, lastName]);
+
+  // On the tax-ID top-up, prefill the issuing country from the customer's
+  // country of residence.
+  useEffect(() => {
+    if (idCountry) return;
+    const c = (customer as BridgeCustomer | null)?.residential_address?.country;
+    if (c) setIdCountry(c.toUpperCase());
+  }, [customer, idCountry]);
 
   // Receive the signed_agreement_id relayed from the ToS popup.
   useEffect(() => {
@@ -202,6 +216,38 @@ export default function VerifyPage() {
     () => Boolean(signedAgreementId) && !submitting,
     [signedAgreementId, submitting]
   );
+
+  async function handleTaxIdSubmit() {
+    if (!idNumber.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const data = await submitDirectKyc({
+        mode: "little",
+        id_type: idType,
+        id_country: idCountry || (customer as BridgeCustomer | null)?.residential_address?.country || "USA",
+        id_number: idNumber,
+      });
+      mutate();
+      const status = data.kyc_status as string;
+      toast({
+        variant: "success",
+        title: status === "approved" ? "You're verified!" : "Tax ID submitted",
+        description:
+          status === "approved"
+            ? "Your identity has been verified."
+            : "Bridge is finishing up your verification — this usually takes under a minute.",
+      });
+      router.push("/settings");
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Couldn't submit your Tax ID",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -269,6 +315,63 @@ export default function VerifyPage() {
             <Link href="/settings">
               <Button variant="outline">Back to settings</Button>
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Top-up: identity already on file, only the tax ID is outstanding.
+  if (taxIdTopUp) {
+    return (
+      <div className="space-y-6 animate-fade-in max-w-xl">
+        <div>
+          <h1 className="text-2xl font-bold text-white">One last step</h1>
+          <p className="text-white/50 mt-1">
+            We have everything else — Bridge just needs your tax ID number to finish verifying you.
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tax ID number</CardTitle>
+            <CardDescription>
+              No documents or extra details needed — this is checked against Bridge&apos;s databases.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Identifier type">
+                <Select value={idType} onChange={setIdType} options={TAX_ID_TYPES} />
+              </Field>
+              <Field label="Country of residence (3-letter)">
+                <Input
+                  value={idCountry}
+                  onChange={(e) => setIdCountry(e.target.value.toUpperCase())}
+                  placeholder="USA, GBR…"
+                  maxLength={3}
+                />
+              </Field>
+            </div>
+            <Field label="Tax ID number">
+              <Input
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value)}
+                placeholder="e.g. SSN / TIN"
+                autoFocus
+              />
+            </Field>
+            <Button className="w-full" disabled={!idNumber.trim() || submitting} onClick={handleTaxIdSubmit}>
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Submitting…
+                </>
+              ) : (
+                <>
+                  Finish verification <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>

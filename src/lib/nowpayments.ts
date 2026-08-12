@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-const API_URL = "https://api.nowpayments.io/v1";
+// Sandbox uses a different host (api-sandbox.nowpayments.io). Point
+// NOWPAYMENTS_API_URL at it while testing; defaults to production.
+const API_URL = process.env.NOWPAYMENTS_API_URL || "https://api.nowpayments.io/v1";
 const API_KEY = process.env.NOWPAYMENTS_API_KEY || "";
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET || "";
 

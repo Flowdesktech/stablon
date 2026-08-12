@@ -57,6 +57,9 @@ export interface BridgeCustomer {
   capabilities?: Record<string, string>;
   endorsements?: BridgeEndorsement[];
   has_accepted_terms_of_service?: boolean;
+  // Bridge echoes back the (partial) address on file; used to prefill the tax-ID
+  // issuing country on the top-up form.
+  residential_address?: Partial<KycAddress>;
   // Hosted Terms-of-Service acceptance link, returned on the customer object.
   tos_link?: string;
   created_at: string;

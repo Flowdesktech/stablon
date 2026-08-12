@@ -21,6 +21,7 @@ export async function GET() {
     kycStatus: user.kycStatus,
     twoFactorEnabled: user.twoFactorEnabled,
     superAdmin: user.superAdmin,
+    vaFeePaid: user.vaFeePaid,
     impersonating,
   });
 }

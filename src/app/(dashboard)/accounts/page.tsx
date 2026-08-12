@@ -19,6 +19,7 @@ import {
   FeeRequiredError,
 } from "@/hooks/use-bridge";
 import { toast } from "@/components/ui/toast";
+import { useProfile } from "@/hooks/use-profile";
 import { useSearchParams } from "next/navigation";
 import { CopyAllButton } from "@/components/copy-all-button";
 import { buildAccountDetailsText } from "@/lib/account-details";
@@ -36,7 +37,38 @@ import {
   Wallet,
   Pencil,
   X,
+  Info,
 } from "lucide-react";
+
+// One-time setup fee (USD) charged before the first virtual account is created.
+// Shown prominently so the payment step isn't a surprise. Keep in sync with the
+// server's VIRTUAL_ACCOUNT_FEE_USD.
+const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "10";
+// Ongoing deposit processing fee (%), mirrored from BRIDGE_DEVELOPER_FEE_PERCENT.
+const DEPOSIT_FEE_PERCENT = process.env.NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT || "3";
+
+// Prominent notice explaining the one-time setup fee, so users understand why
+// they're asked to pay (via crypto) before their first account is created.
+function FeeNotice() {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-purple-500/30 bg-purple-500/[0.08] p-4">
+      <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
+        <Info className="w-4.5 h-4.5 text-purple-300" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-white">
+          One-time ${FEE_USD} setup fee
+        </p>
+        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+          Issuing a dedicated bank account carries a real provisioning cost, so we charge a{" "}
+          <span className="text-white/90 font-medium">one-time ${FEE_USD} fee</span>&nbsp; before your first
+          account is created. It&apos;s paid in crypto (USDC, USDT, and more) via our payment partner,
+          covers all your future accounts, and is separate from the {DEPOSIT_FEE_PERCENT}% processing on deposits.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // Fiat currencies Bridge can issue virtual accounts for, with their local rail.
 const FIAT_CURRENCIES = [
@@ -266,6 +298,8 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
 
 export default function AccountsPage() {
   const { accounts, isLoading, mutate } = useVirtualAccounts();
+  const { profile } = useProfile();
+  const feePaid = Boolean(profile?.vaFeePaid);
   const searchParams = useSearchParams();
   const paidParam = searchParams.get("paid");
   const cancelledParam = searchParams.get("payment");
@@ -343,7 +377,8 @@ export default function AccountsPage() {
       {cancelledParam === "cancelled" && (
         <Card className="border-amber-500/30 bg-amber-500/[0.05]">
           <CardContent className="p-4 text-sm text-amber-300">
-            Payment was cancelled. A one-time setup fee is required to create a virtual account.
+            Payment was cancelled. A one-time ${FEE_USD} setup fee is required to create your first virtual
+            account — you can retry anytime below.
           </CardContent>
         </Card>
       )}
@@ -425,9 +460,7 @@ export default function AccountsPage() {
               </p>
             </div>
 
-            <p className="text-xs text-white/40">
-              A one-time setup fee (payable in crypto) is required before your first account is created.
-            </p>
+            {!feePaid && <FeeNotice />}
 
             <Button
               className="w-full"
@@ -436,14 +469,19 @@ export default function AccountsPage() {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Creating…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {feePaid ? "Creating…" : "Redirecting to payment…"}
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" /> Create {fiatCurrency.toUpperCase()} Account
+                  <Plus className="w-4 h-4" /> {feePaid ? `Create ${fiatCurrency.toUpperCase()} Account` : `Pay $${FEE_USD} & Create Account`}
                 </>
               )}
             </Button>
+            {!feePaid && (
+              <p className="text-[11px] text-white/40 text-center">
+                You&apos;ll be redirected to our secure crypto checkout to complete the one-time payment.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -468,6 +506,11 @@ export default function AccountsPage() {
               <p className="text-white/70 font-medium">No accounts yet</p>
               <p className="text-sm text-white/40 mt-1">Create a USD, EUR or GBP virtual account to receive payments worldwide.</p>
             </div>
+            {!feePaid && (
+              <div className="w-full max-w-md text-left">
+                <FeeNotice />
+              </div>
+            )}
             <Button onClick={() => setCreating(true)}>
               <Plus className="w-4 h-4" /> Create Account
             </Button>
