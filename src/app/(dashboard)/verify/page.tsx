@@ -6,10 +6,11 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CountrySelect, Combobox } from "@/components/ui/country-select";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
 import { requestTosLink, submitDirectKyc, useCustomer, useOccupationCodes } from "@/hooks/use-bridge";
-import { onlyTaxIdMissing } from "@/lib/kyc";
+import { kycGaps, hasGaps } from "@/lib/kyc";
 import type { BridgeCustomer, DirectKycMode } from "@/types/bridge";
 import {
   ShieldCheck,
@@ -76,6 +77,16 @@ const ACCOUNT_PURPOSE = [
   { value: "other", label: "Other" },
 ];
 
+// A contextual placeholder / format hint for the identifier number field.
+const ID_NUMBER_PLACEHOLDER: Record<string, string> = {
+  ssn: "e.g. 123-45-6789",
+  tin: "e.g. 12-3456789",
+};
+
+function idNumberPlaceholder(idType: string): string {
+  return ID_NUMBER_PLACEHOLDER[idType] ?? "ID / document number";
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -91,9 +102,14 @@ export default function VerifyPage() {
   const { customer } = useCustomer();
   const { occupations, isLoading: occupationsLoading } = useOccupationCodes();
 
-  // When the customer is already on file and the ONLY outstanding requirement is
-  // a tax ID, show a compact "just your Tax ID" form instead of the whole flow.
-  const taxIdTopUp = onlyTaxIdMissing(customer as BridgeCustomer | null);
+  // Work out exactly which fields are still outstanding for this customer. For a
+  // returning user we render ONLY the missing sections (a "top-up"); a brand-new
+  // user gets the full questionnaire.
+  const gaps = useMemo(() => kycGaps(customer as BridgeCustomer | null), [customer]);
+  // A top-up applies to a customer already on file with something still missing
+  // but without needing the ToS step again (that's handled separately).
+  const hasCustomer = Boolean((customer as BridgeCustomer | null)?.id);
+  const isTopUp = hasCustomer && hasGaps(gaps) && !gaps.terms;
 
   const occupationOptions = useMemo(
     () => occupations.map((o) => ({ value: o.code, label: o.display_name })),
@@ -107,8 +123,11 @@ export default function VerifyPage() {
     setIdType(next === "advanced" ? "passport" : "tin");
   }
 
+  // During a top-up that requires a government photo ID we need a document
+  // (advanced mode) even if the user's default tier is "little".
   const [mode, setMode] = useState<DirectKycMode>("little");
-  const idTypeOptions = mode === "advanced" ? GOV_ID_TYPES : TAX_ID_TYPES;
+  const effectiveMode: DirectKycMode = isTopUp && gaps.govId ? "advanced" : mode;
+  const idTypeOptions = effectiveMode === "advanced" ? GOV_ID_TYPES : TAX_ID_TYPES;
   const [signedAgreementId, setSignedAgreementId] = useState("");
   const [tosLoading, setTosLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -146,13 +165,24 @@ export default function VerifyPage() {
     setLastName(parts.slice(1).join(" ") || "");
   }, [profile?.name, firstName, lastName]);
 
-  // On the tax-ID top-up, prefill the issuing country from the customer's
-  // country of residence.
+  // On a top-up, prefill the issuing country from the customer's country of
+  // residence.
   useEffect(() => {
     if (idCountry) return;
     const c = (customer as BridgeCustomer | null)?.residential_address?.country;
     if (c) setIdCountry(c.toUpperCase());
   }, [customer, idCountry]);
+
+  // Keep the ID type valid for the effective mode. In a top-up the mode isn't
+  // chosen via ModeCard, so we derive the right default from the gap itself.
+  useEffect(() => {
+    if (effectiveMode === "advanced" && !GOV_ID_TYPES.some((t) => t.value === idType)) {
+      setIdType("passport");
+    } else if (effectiveMode === "little" && !TAX_ID_TYPES.some((t) => t.value === idType)) {
+      setIdType("tin");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveMode]);
 
   // Receive the signed_agreement_id relayed from the ToS popup.
   useEffect(() => {
@@ -212,26 +242,48 @@ export default function VerifyPage() {
     }
   }
 
+  // A top-up only needs the fields that are actually outstanding.
+  const topUpReady =
+    (!gaps.taxId || Boolean(idNumber.trim())) &&
+    (!gaps.govId || Boolean(idNumber.trim() && idImageFront)) &&
+    (!gaps.proofOfAddress || Boolean(proofOfAddress)) &&
+    (!gaps.questionnaire || Boolean(employmentStatus && sourceOfFunds && accountPurpose));
+
   const canSubmit = useMemo(
-    () => Boolean(signedAgreementId) && !submitting,
-    [signedAgreementId, submitting]
+    () => !submitting && (isTopUp ? topUpReady : Boolean(signedAgreementId)),
+    [submitting, isTopUp, topUpReady, signedAgreementId]
   );
 
-  async function handleTaxIdSubmit() {
-    if (!idNumber.trim() || submitting) return;
+  async function handleTopUpSubmit() {
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
+      const fallbackCountry =
+        idCountry || (customer as BridgeCustomer | null)?.residential_address?.country || "USA";
       const data = await submitDirectKyc({
-        mode: "little",
-        id_type: idType,
-        id_country: idCountry || (customer as BridgeCustomer | null)?.residential_address?.country || "USA",
-        id_number: idNumber,
+        mode: effectiveMode,
+        ...(gaps.taxId && { id_type: idType, id_country: fallbackCountry, id_number: idNumber }),
+        ...(gaps.govId && {
+          id_type: idType,
+          id_country: fallbackCountry,
+          id_number: idNumber,
+          id_image_front: idImageFront,
+          id_image_back: idImageBack,
+        }),
+        ...(gaps.proofOfAddress && { proof_of_address: proofOfAddress }),
+        ...(gaps.questionnaire && {
+          employment_status: employmentStatus,
+          expected_monthly_payments_usd: monthlyVolume,
+          source_of_funds: sourceOfFunds,
+          account_purpose: accountPurpose,
+          most_recent_occupation: occupation,
+        }),
       });
       mutate();
       const status = data.kyc_status as string;
       toast({
         variant: "success",
-        title: status === "approved" ? "You're verified!" : "Tax ID submitted",
+        title: status === "approved" ? "You're verified!" : "Details submitted",
         description:
           status === "approved"
             ? "Your identity has been verified."
@@ -241,7 +293,7 @@ export default function VerifyPage() {
     } catch (err) {
       toast({
         variant: "error",
-        title: "Couldn't submit your Tax ID",
+        title: "Couldn't submit your details",
         description: err instanceof Error ? err.message : "Please try again.",
       });
     } finally {
@@ -321,59 +373,148 @@ export default function VerifyPage() {
     );
   }
 
-  // Top-up: identity already on file, only the tax ID is outstanding.
-  if (taxIdTopUp) {
+  // Top-up: the customer is already on file and only some fields are still
+  // outstanding. Render ONLY those sections instead of the whole questionnaire.
+  if (isTopUp) {
     return (
       <div className="space-y-6 animate-fade-in max-w-xl">
         <div>
-          <h1 className="text-2xl font-bold text-white">One last step</h1>
+          <h1 className="text-2xl font-bold text-white">Finish verifying</h1>
           <p className="text-white/50 mt-1">
-            We have everything else — Bridge just needs your tax ID number to finish verifying you.
+            We already have most of your details — just a couple of items left to complete your
+            verification.
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tax ID number</CardTitle>
-            <CardDescription>
-              No documents or extra details needed — this is checked against Bridge&apos;s databases.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Identifier type">
-                <Select value={idType} onChange={setIdType} options={TAX_ID_TYPES} />
-              </Field>
-              <Field label="Country of residence (3-letter)">
+        {gaps.taxId && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Tax ID number</CardTitle>
+              <CardDescription>
+                Checked against Bridge&apos;s databases — no photo needed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Identifier type">
+                  <Select value={idType} onChange={setIdType} options={TAX_ID_TYPES} />
+                </Field>
+                <Field label="Country of residence">
+                  <CountrySelect value={idCountry} onChange={setIdCountry} placeholder="Select country…" />
+                </Field>
+              </div>
+              <Field label="Tax ID number">
                 <Input
-                  value={idCountry}
-                  onChange={(e) => setIdCountry(e.target.value.toUpperCase())}
-                  placeholder="USA, GBR…"
-                  maxLength={3}
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  placeholder={idNumberPlaceholder(idType)}
                 />
               </Field>
-            </div>
-            <Field label="Tax ID number">
-              <Input
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
-                placeholder="e.g. SSN / TIN"
-                autoFocus
+            </CardContent>
+          </Card>
+        )}
+
+        {gaps.govId && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Government photo ID</CardTitle>
+              <CardDescription>Provide your ID details and a photo of the front.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Document type">
+                  <Select value={idType} onChange={setIdType} options={GOV_ID_TYPES} />
+                </Field>
+                <Field label="Issuing country">
+                  <CountrySelect value={idCountry} onChange={setIdCountry} placeholder="Select country…" />
+                </Field>
+              </div>
+              <Field label="Document number">
+                <Input
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  placeholder={idNumberPlaceholder(idType)}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <UploadField
+                  label="ID front"
+                  value={idImageFront}
+                  onChange={(e) => handleUpload(e, setIdImageFront)}
+                />
+                <UploadField
+                  label="ID back (optional)"
+                  value={idImageBack}
+                  onChange={(e) => handleUpload(e, setIdImageBack)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {gaps.proofOfAddress && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Proof of address</CardTitle>
+              <CardDescription>A recent utility bill or bank statement.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UploadField
+                label="Proof of address"
+                value={proofOfAddress}
+                onChange={(e) => handleUpload(e, setProofOfAddress)}
               />
-            </Field>
-            <Button className="w-full" disabled={!idNumber.trim() || submitting} onClick={handleTaxIdSubmit}>
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Submitting…
-                </>
-              ) : (
-                <>
-                  Finish verification <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {gaps.questionnaire && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">A few quick questions</CardTitle>
+              <CardDescription>Bridge needs these to finish verifying you.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Employment status">
+                  <Select value={employmentStatus} onChange={setEmploymentStatus} options={EMPLOYMENT} placeholder="Select…" />
+                </Field>
+                <Field label="Expected monthly volume">
+                  <Select value={monthlyVolume} onChange={setMonthlyVolume} options={MONTHLY_VOLUME} placeholder="Select…" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Source of funds">
+                  <Select value={sourceOfFunds} onChange={setSourceOfFunds} options={SOURCE_OF_FUNDS} placeholder="Select…" />
+                </Field>
+                <Field label="Account purpose">
+                  <Select value={accountPurpose} onChange={setAccountPurpose} options={ACCOUNT_PURPOSE} placeholder="Select…" />
+                </Field>
+              </div>
+              <Field label="Occupation (optional)">
+                <Combobox
+                  value={occupation}
+                  onChange={setOccupation}
+                  options={occupationOptions}
+                  placeholder={occupationsLoading ? "Loading occupations…" : "Select occupation…"}
+                  searchPlaceholder="Type to search occupations…"
+                />
+              </Field>
+            </CardContent>
+          </Card>
+        )}
+
+        <Button className="w-full" disabled={!canSubmit} onClick={handleTopUpSubmit}>
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Submitting…
+            </>
+          ) : (
+            <>
+              Finish verification <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
       </div>
     );
   }
@@ -471,18 +612,16 @@ export default function VerifyPage() {
             <Field label="Postal code">
               <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
             </Field>
-            <Field label="Country (3-letter code)">
-              <Input
+            <Field label="Country">
+              <CountrySelect
                 value={country}
-                onChange={(e) => {
-                  const v = e.target.value.toUpperCase();
+                onChange={(v) => {
                   setCountry(v);
                   // In quick mode the tax id is keyed to the country of residence,
                   // so keep the identifier country in sync as a sensible default.
                   if (!idCountry) setIdCountry(v);
                 }}
-                placeholder="USA, GBR, ARG…"
-                maxLength={3}
+                placeholder="Select country…"
               />
             </Field>
           </div>
@@ -504,17 +643,16 @@ export default function VerifyPage() {
             <Field label={mode === "advanced" ? "Document type" : "Identifier type"}>
               <Select value={idType} onChange={setIdType} options={idTypeOptions} />
             </Field>
-            <Field label={mode === "advanced" ? "Issuing country (3-letter)" : "Country of residence (3-letter)"}>
-              <Input
-                value={idCountry}
-                onChange={(e) => setIdCountry(e.target.value.toUpperCase())}
-                placeholder="USA, GBR…"
-                maxLength={3}
-              />
+            <Field label={mode === "advanced" ? "Issuing country" : "Country of residence"}>
+              <CountrySelect value={idCountry} onChange={setIdCountry} placeholder="Select country…" />
             </Field>
           </div>
           <Field label="Document / ID number">
-            <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
+            <Input
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+              placeholder={idNumberPlaceholder(idType)}
+            />
           </Field>
 
           {mode === "advanced" && (
@@ -564,11 +702,12 @@ export default function VerifyPage() {
               </Field>
             </div>
             <Field label="Occupation (optional)">
-              <Select
+              <Combobox
                 value={occupation}
                 onChange={setOccupation}
                 options={occupationOptions}
                 placeholder={occupationsLoading ? "Loading occupations…" : "Select occupation…"}
+                searchPlaceholder="Type to search occupations…"
               />
             </Field>
           </CardContent>

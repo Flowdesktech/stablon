@@ -32,8 +32,10 @@ const INTERNAL_REQUIREMENTS = new Set([
   "valid_date_of_birth",
   "duplicate_check_tax_id_hash",
   "duplicate_check_name_dob",
+  "duplicate_check_phone",
   "stripe_database_lookup_bridge_address",
   "stripe_database_lookup_global_dob",
+  "adverse_media_screen",
 ]);
 
 function humanize(code: string): string {
@@ -80,3 +82,54 @@ export function onlyTaxIdMissing(
   const codes = outstandingKycCodes(customer);
   return codes.length > 0 && codes.every((c) => c === "tax_identification_number");
 }
+
+// Which parts of the verify form are still outstanding, derived from Bridge's
+// endorsement requirements. The verify page uses this to render ONLY the missing
+// sections for a returning user (top-up) instead of the whole questionnaire.
+export interface KycGaps {
+  taxId: boolean;
+  govId: boolean;
+  proofOfAddress: boolean;
+  questionnaire: boolean;
+  terms: boolean;
+}
+
+const NONE: KycGaps = {
+  taxId: false,
+  govId: false,
+  proofOfAddress: false,
+  questionnaire: false,
+  terms: false,
+};
+
+export function kycGaps(
+  customer: Pick<BridgeCustomer, "endorsements" | "has_accepted_terms_of_service"> | null | undefined
+): KycGaps {
+  if (!customer) {
+    return { taxId: true, govId: true, proofOfAddress: true, questionnaire: true, terms: true };
+  }
+  const codes = new Set(outstandingKycCodes(customer));
+  const gaps: KycGaps = {
+    taxId: codes.has("tax_identification_number"),
+    govId: codes.has("government_id_document") || codes.has("id_document"),
+    proofOfAddress: codes.has("proof_of_address"),
+    questionnaire: codes.has("source_of_funds_questionnaire"),
+    terms:
+      !customer.has_accepted_terms_of_service ||
+      codes.has("terms_of_service_v1") ||
+      codes.has("terms_of_service_v2"),
+  };
+  return gaps;
+}
+
+// True when the customer is already on file and there's at least one gap to fill
+// (i.e. we're topping up an existing customer, not collecting from scratch).
+export function hasGaps(gaps: KycGaps): boolean {
+  return Object.values(gaps).some(Boolean);
+}
+
+export function noGaps(gaps: KycGaps): boolean {
+  return !hasGaps(gaps);
+}
+
+export { NONE as EMPTY_KYC_GAPS };

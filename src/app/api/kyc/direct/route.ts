@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/api-guards";
 import { updateUserDoc } from "@/lib/users";
 import * as bridge from "@/lib/bridge";
 import { apiError } from "@/lib/api-error";
-import { onlyTaxIdMissing } from "@/lib/kyc";
+import { kycGaps } from "@/lib/kyc";
 import type {
   BridgeCustomer,
   DirectKycMode,
@@ -129,55 +129,108 @@ export async function POST(req: Request) {
     };
     const documents: KycDocument[] = [];
 
-    // Top-up path: the customer is already on file and the only outstanding
-    // requirement is a tax ID. In that case we send a minimal PUT with just the
-    // tax identifier instead of re-validating/re-submitting the whole profile.
-    if (user.bridgeCustomerId && idType && idNumber) {
+    // Read optional document / questionnaire fields once (used by both the
+    // top-up and full-create paths).
+    const imageFront = str(body.id_image_front);
+    const imageBack = str(body.id_image_back);
+    const proof = str(body.proof_of_address);
+
+    // File-size guard shared by every path that accepts uploads.
+    if ([imageFront, imageBack, proof].some((v) => v.length > MAX_IMAGE_CHARS)) {
+      return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
+    }
+    if (imageFront.length + imageBack.length > MAX_COMBINED_ID_CHARS) {
+      return NextResponse.json(
+        {
+          error:
+            "Your ID front and back images together exceed the 24MB limit. Please compress them and try again.",
+        },
+        { status: 413 }
+      );
+    }
+
+    // ─── Top-up path ─────────────────────────────────────────
+    // The customer already exists on Bridge and we know exactly which fields are
+    // still outstanding. Send a minimal PUT with ONLY those gaps instead of
+    // re-validating/re-submitting the whole profile.
+    if (user.bridgeCustomerId) {
       let existing: BridgeCustomer | null = null;
       try {
         existing = await bridge.getCustomer(user.bridgeCustomerId);
       } catch {
         existing = null;
       }
-      if (existing && onlyTaxIdMissing(existing)) {
-        if (!TAX_ID_TYPES.has(idType)) {
+
+      if (existing) {
+        const gaps = kycGaps(existing);
+        const patch: Record<string, unknown> = {};
+        const missingTopUp: string[] = [];
+
+        if (gaps.taxId) {
+          if (!idNumber || !TAX_ID_TYPES.has(idType)) {
+            missingTopUp.push("a valid tax ID (type + number)");
+          } else {
+            patch.identifying_information = [idInfo];
+          }
+        }
+
+        if (gaps.govId) {
+          if (!GOV_ID_TYPES.has(idType) || !imageFront) {
+            missingTopUp.push("a government photo ID (type, number, and a photo of the front)");
+          } else {
+            patch.identifying_information = [
+              { ...idInfo, image_front: imageFront, ...(imageBack ? { image_back: imageBack } : {}) },
+            ];
+          }
+        }
+
+        if (gaps.proofOfAddress) {
+          if (!proof) missingTopUp.push("a proof of address document");
+          else documents.push({ purposes: ["proof_of_address"], file: proof });
+        }
+
+        if (gaps.questionnaire) {
+          const sof = str(body.source_of_funds);
+          const emp = str(body.employment_status);
+          const ap = str(body.account_purpose);
+          if (!sof || !emp || !ap) {
+            missingTopUp.push("source of funds, employment status, and account purpose");
+          } else {
+            patch.source_of_funds = sof;
+            patch.employment_status = emp;
+            patch.account_purpose = ap;
+            if (str(body.expected_monthly_payments_usd))
+              patch.expected_monthly_payments_usd = str(body.expected_monthly_payments_usd);
+            if (str(body.most_recent_occupation))
+              patch.most_recent_occupation = str(body.most_recent_occupation);
+          }
+        }
+
+        if (missingTopUp.length > 0) {
           return NextResponse.json(
-            { error: "Please choose a valid tax ID type (e.g. SSN or TIN)." },
+            { error: `Please provide: ${missingTopUp.join("; ")}.` },
             { status: 400 }
           );
         }
-        const customer = await bridge.submitDirectKyc(user.bridgeCustomerId, {
-          identifying_information: [idInfo],
-        });
-        const kyc_status = bridge.deriveKycStatus(customer);
-        await updateUserDoc(user.uid, { kycStatus: kyc_status });
-        return NextResponse.json({
-          customer_id: customer.id,
-          kyc_status,
-          endorsements: customer.endorsements ?? [],
-        });
+
+        if (Object.keys(patch).length > 0 || documents.length > 0) {
+          if (documents.length > 0) patch.documents = documents;
+          const customer = await bridge.submitDirectKyc(user.bridgeCustomerId, patch);
+          const kyc_status = bridge.deriveKycStatus(customer);
+          await updateUserDoc(user.uid, { kycStatus: kyc_status });
+          return NextResponse.json({
+            customer_id: customer.id,
+            kyc_status,
+            endorsements: customer.endorsements ?? [],
+          });
+        }
+        // Nothing to top up (e.g. ToS gap handled via its own flow) — fall
+        // through to the full validation, which will report what's still needed.
       }
     }
 
+    // ─── Full create / re-submit path ────────────────────────
     if (mode === "advanced") {
-      // Higher-assurance tier: require ID image + proof of address.
-      const imageFront = str(body.id_image_front);
-      const imageBack = str(body.id_image_back);
-      const proof = str(body.proof_of_address);
-
-      if ([imageFront, imageBack, proof].some((v) => v.length > MAX_IMAGE_CHARS)) {
-        return NextResponse.json({ error: TOO_LARGE_MESSAGE }, { status: 413 });
-      }
-      if (imageFront.length + imageBack.length > MAX_COMBINED_ID_CHARS) {
-        return NextResponse.json(
-          {
-            error:
-              "Your ID front and back images together exceed the 24MB limit. Please compress them and try again.",
-          },
-          { status: 413 }
-        );
-      }
-
       if (imageFront) idInfo.image_front = imageFront;
       if (imageBack) idInfo.image_back = imageBack;
       if (proof) documents.push({ purposes: ["proof_of_address"], file: proof });
