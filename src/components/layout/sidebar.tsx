@@ -43,6 +43,7 @@ const navItems = [
 const adminNavItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/wallets", label: "Wallets", icon: Wallet },
+  { href: "/admin/transactions", label: "Transactions", icon: ReceiptText },
 ];
 
 export function Sidebar() {

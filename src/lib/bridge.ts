@@ -441,13 +441,31 @@ export async function getTransfer(
   return bridgeFetch<BridgeTransfer>(`/transfers/${transferId}`);
 }
 
+export interface BridgeListOptions {
+  limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+}
+
+function listQuery(options: BridgeListOptions = {}): string {
+  const params = new URLSearchParams();
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.startingAfter) params.set("starting_after", options.startingAfter);
+  if (options.endingBefore) params.set("ending_before", options.endingBefore);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export async function listTransfers(
-  customerId?: string
-): Promise<{ data: BridgeTransfer[] }> {
-  const path = customerId
+  customerId?: string,
+  options: BridgeListOptions = {}
+): Promise<{ count?: number; data: BridgeTransfer[] }> {
+  const basePath = customerId
     ? `/customers/${customerId}/transfers`
     : "/transfers";
-  return bridgeFetch<{ data: BridgeTransfer[] }>(path);
+  return bridgeFetch<{ count?: number; data: BridgeTransfer[] }>(
+    `${basePath}${listQuery(options)}`
+  );
 }
 
 // ─── Virtual Accounts ────────────────────────────────────────
@@ -508,6 +526,16 @@ export async function getVirtualAccountHistory(
 ): Promise<{ count?: number; data: BridgeVirtualAccountEvent[] }> {
   return bridgeFetch<{ count?: number; data: BridgeVirtualAccountEvent[] }>(
     `/customers/${customerId}/virtual_accounts/${virtualAccountId}/history`
+  );
+}
+
+// Activity across every virtual account under the platform API key. Used by
+// the super-admin transaction feed to avoid one Bridge request per account.
+export async function listVirtualAccountHistory(
+  options: BridgeListOptions = {}
+): Promise<{ count?: number; data: BridgeVirtualAccountEvent[] }> {
+  return bridgeFetch<{ count?: number; data: BridgeVirtualAccountEvent[] }>(
+    `/virtual_accounts/history${listQuery(options)}`
   );
 }
 

@@ -98,14 +98,6 @@ export function Combobox({
     };
   }, [open, reposition]);
 
-  // Reset the search + highlight whenever the dropdown is (re)opened.
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setHighlight(0);
-    }
-  }, [open]);
-
   // Close on outside click (the panel is portalled, so check it separately).
   useEffect(() => {
     if (!open) return;
@@ -154,10 +146,18 @@ export function Combobox({
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) {
+            setQuery("");
+            setHighlight(0);
+          }
+          setOpen((value) => !value);
+        }}
         onKeyDown={(e) => {
           if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
             e.preventDefault();
+            setQuery("");
+            setHighlight(0);
             setOpen(true);
           }
         }}
