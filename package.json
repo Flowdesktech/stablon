@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "youtube:upload": "node scripts/upload-youtube.mjs"
   },
   "dependencies": {
     "@koshmoney/countries": "^1.0.1-beta.1",

@@ -11,6 +11,7 @@ import {
   FileText,
   Globe2,
   Landmark,
+  PlayCircle,
   RefreshCw,
   Repeat2,
   Send,
@@ -118,6 +119,16 @@ const jsonLd = {
         name: faq.question,
         acceptedAnswer: { "@type": "Answer", text: faq.answer },
       })),
+    },
+    {
+      "@type": "VideoObject",
+      name: "Stablon product demo: invoicing and business payments",
+      description:
+        "See how Stablon brings professional invoicing and supported business payment workflows into one platform.",
+      thumbnailUrl: `${siteUrl}/video-poster.webp`,
+      contentUrl: `${siteUrl}/video.mp4`,
+      uploadDate: "2026-08-21",
+      duration: "PT52S",
     },
   ],
 };
@@ -250,6 +261,40 @@ export default function LandingPage() {
               </p>
             </div>
             <ProductPreview />
+          </div>
+        </section>
+
+        <section aria-labelledby="product-demo-heading" className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                Product demo
+              </p>
+              <h2
+                id="product-demo-heading"
+                className="mt-2 text-3xl font-semibold tracking-tight"
+              >
+                See Stablon in action
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">
+                Watch a short overview of professional invoicing and payment workflows.
+              </p>
+            </div>
+            <div className="mt-10 overflow-hidden rounded-xl border border-border bg-slate-950 shadow-[var(--shadow-md)]">
+              <video
+                className="aspect-video w-full"
+                controls
+                playsInline
+                preload="metadata"
+                poster="/video-poster.webp"
+                aria-label="Stablon product demo video"
+              >
+                <source src="/video.mp4" type="video/mp4" />
+                Your browser does not support embedded video.{" "}
+                <a href="/video.mp4">Download the Stablon product demo.</a>
+              </video>
+            </div>
           </div>
         </section>
 
