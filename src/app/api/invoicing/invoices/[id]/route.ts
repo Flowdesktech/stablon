@@ -5,13 +5,12 @@ import { assertSameOrigin, invoicingError, parseJson } from "@/lib/invoicing/htt
 import { invoiceInputSchema } from "@/lib/invoicing/schemas";
 import {
   deleteInvoice,
-  duplicateInvoice,
   getInvoice,
   updateInvoice,
   voidInvoice,
 } from "@/lib/invoicing/repository";
 
-const actionSchema = z.object({ action: z.enum(["void", "duplicate"]) });
+const actionSchema = z.object({ action: z.literal("void") });
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -51,15 +50,12 @@ export async function PATCH(
   try {
     const guard = await requireUser();
     if ("error" in guard) return guard.error;
-    const [{ id }, { action }] = await Promise.all([
+    const [{ id }] = await Promise.all([
       context.params,
       parseJson(request, actionSchema),
     ]);
     return NextResponse.json({
-      data:
-        action === "void"
-          ? await voidInvoice(guard.user.uid, id)
-          : await duplicateInvoice(guard.user.uid, id),
+      data: await voidInvoice(guard.user.uid, id),
     });
   } catch (error) {
     return invoicingError(error);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoiceAddressSchema } from "@/lib/invoicing/schemas";
+import { invoiceAddressSchema, invoiceInputSchema } from "@/lib/invoicing/schemas";
 
 describe("invoice address country names", () => {
   it("accepts full country names without code normalization", () => {
@@ -16,5 +16,21 @@ describe("invoice address country names", () => {
   it("defaults new invoice addresses to United States", () => {
     const address = invoiceAddressSchema.parse({});
     expect(address.country).toBe("United States");
+  });
+});
+
+describe("editable invoice numbers", () => {
+  it("accepts and trims a custom display number", () => {
+    const invoice = invoiceInputSchema.parse({
+      profileId: "profile-1",
+      clientId: "client-1",
+      formattedNumber: "  ACME-2026-0042  ",
+      issueDate: "2026-08-21",
+      dueDate: "2026-08-28",
+      currency: "USD",
+      lineItems: [{ description: "Consulting", quantity: "1", rate: "100" }],
+    });
+
+    expect(invoice.formattedNumber).toBe("ACME-2026-0042");
   });
 });

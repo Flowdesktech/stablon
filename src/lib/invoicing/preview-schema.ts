@@ -23,7 +23,14 @@ const senderSchema = z
     email: z.string().trim().email().max(254),
     phone: z.string().trim().max(40).optional(),
     address: addressSchema,
-    logoUrl: z.string().trim().url().max(2048).optional(),
+    logoUrl: z
+      .string()
+      .trim()
+      .url()
+      .max(2048)
+      .optional()
+      .nullable()
+      .transform((value) => value || undefined),
   })
   .strict();
 

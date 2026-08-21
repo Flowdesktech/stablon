@@ -25,6 +25,10 @@ import {
   formatInvoiceMoney,
 } from "@/components/invoicing/invoice-ui";
 import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
+import {
+  duplicateInvoiceFormDraft,
+  invoiceDraftStorageKey,
+} from "@/lib/invoicing/draft-cache";
 import type { Invoice } from "@/types/invoicing";
 
 type PublishResult = {
@@ -43,6 +47,7 @@ export default function InvoiceDetailPage() {
   const [action, setAction] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
 
   async function publish(): Promise<PublishResult> {
@@ -57,7 +62,7 @@ export default function InvoiceDetailPage() {
     return body;
   }
 
-  async function runAction(name: "publish" | "send" | "void" | "duplicate") {
+  async function runAction(name: "publish" | "send" | "void") {
     setAction(name);
     try {
       if (name === "void") {
@@ -65,14 +70,6 @@ export default function InvoiceDetailPage() {
           `/api/invoicing/invoices/${encodeURIComponent(id)}`,
           { method: "PATCH", body: JSON.stringify({ action: "void" }) }
         );
-      } else if (name === "duplicate") {
-        const copy = await invoicingRequest<Invoice>(
-          `/api/invoicing/invoices/${encodeURIComponent(id)}`,
-          { method: "PATCH", body: JSON.stringify({ action: "duplicate" }) }
-        );
-        toast({ variant: "success", title: "Invoice duplicated" });
-        router.push(`/invoices/${copy.id}/edit`);
-        return;
       } else if (name === "send") {
         const result = await invoicingRequest<{
           sent: boolean;
@@ -90,6 +87,7 @@ export default function InvoiceDetailPage() {
       }
       await mutate();
       if (name === "void") setVoidOpen(false);
+      if (name === "send") setSendOpen(false);
       toast({
         variant: "success",
         title:
@@ -117,7 +115,7 @@ export default function InvoiceDetailPage() {
       await invoicingRequest(`/api/invoicing/invoices/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
-      toast({ variant: "success", title: "Draft deleted" });
+      toast({ variant: "success", title: "Invoice deleted" });
       router.push("/invoices");
       router.refresh();
     } catch (deleteError) {
@@ -127,6 +125,30 @@ export default function InvoiceDetailPage() {
         description: deleteError instanceof Error ? deleteError.message : "Please try again.",
       });
       setAction(null);
+    }
+  }
+
+  function duplicateInvoice() {
+    if (!invoice) return;
+    try {
+      const storageId = `duplicate:${invoice.id}`;
+      window.localStorage.setItem(
+        invoiceDraftStorageKey(invoice.ownerUid, storageId),
+        JSON.stringify(duplicateInvoiceFormDraft(invoice))
+      );
+      toast({
+        variant: "info",
+        title: "Invoice copied",
+        description: "Review the duplicated details before saving the new invoice.",
+      });
+      router.push(`/invoices/create?duplicate=${encodeURIComponent(invoice.id)}`);
+    } catch (duplicateError) {
+      toast({
+        variant: "error",
+        title: "Invoice not duplicated",
+        description:
+          duplicateError instanceof Error ? duplicateError.message : "Please try again.",
+      });
     }
   }
 
@@ -204,27 +226,27 @@ export default function InvoiceDetailPage() {
               <SubmitButton pending={action === "publish"} onClick={() => runAction("publish")}>
                 <Send className="h-4 w-4" /> Publish
               </SubmitButton>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={action === "delete"}
-                onClick={() => setDeleteOpen(true)}
-                aria-label="Delete draft"
-                className="text-muted-foreground hover:text-danger"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
             </>
           )}
+          {["draft", "void"].includes(invoice.status) && (
+            <Button
+              variant="destructive"
+              size="icon"
+              disabled={action === "delete"}
+              onClick={() => setDeleteOpen(true)}
+              aria-label={`Delete ${invoice.status} invoice`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
           {canSend && (
-            <SubmitButton pending={action === "send"} onClick={() => runAction("send")}>
+            <SubmitButton pending={action === "send"} onClick={() => setSendOpen(true)}>
               <Mail className="h-4 w-4" /> Send invoice
             </SubmitButton>
           )}
           <Button
             variant="outline"
-            disabled={action === "duplicate"}
-            onClick={() => runAction("duplicate")}
+            onClick={duplicateInvoice}
           >
             <Copy className="h-4 w-4" /> Duplicate
           </Button>
@@ -367,11 +389,20 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
       <ConfirmationDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        title="Send this invoice?"
+        description={`A PDF copy and payment link will be emailed to ${invoice.clientSnapshot.email}.`}
+        confirmLabel="Send email"
+        pending={action === "send"}
+        onConfirm={() => void runAction("send")}
+      />
+      <ConfirmationDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete draft invoice?"
+        title="Delete invoice?"
         description={`${invoice.formattedNumber} will be permanently deleted. This action cannot be undone.`}
-        confirmLabel="Delete draft"
+        confirmLabel="Delete invoice"
         pending={action === "delete"}
         destructive
         onConfirm={() => void deleteInvoice()}

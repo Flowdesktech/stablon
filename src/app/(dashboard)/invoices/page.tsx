@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Copy, Edit3, FilePlus2, Search, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Copy,
+  Download,
+  Edit3,
+  FilePlus2,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataState, DataToolbar, DataView } from "@/components/ui/data-view";
 import { Input } from "@/components/ui/input";
@@ -16,14 +24,28 @@ import {
   InvoiceStatusBadge,
   LoadingState,
   PageHeading,
-  SubmitButton,
   formatInvoiceMoney,
 } from "@/components/invoicing/invoice-ui";
 import { Select } from "@/components/ui/field";
-import { invoicingRequest, jsonBody, useInvoicingData } from "@/components/invoicing/api";
-import type { Invoice, InvoiceStatus } from "@/types/invoicing";
+import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
+import {
+  duplicateInvoiceFormDraft,
+  invoiceDraftStorageKey,
+  invoiceNumberForList,
+} from "@/lib/invoicing/draft-cache";
+import type { Invoice, InvoiceProfile, InvoiceStatus } from "@/types/invoicing";
 
 type Filter = "all" | InvoiceStatus;
+
+function displayedInvoiceNumber(
+  invoice: Invoice,
+  profilePrefixes: ReadonlyMap<string, string>
+) {
+  const prefix = profilePrefixes.get(invoice.profileId);
+  return prefix
+    ? invoiceNumberForList(invoice.formattedNumber, prefix)
+    : invoice.formattedNumber;
+}
 
 export default function InvoicesPage() {
   const router = useRouter();
@@ -31,11 +53,24 @@ export default function InvoicesPage() {
     "/api/invoicing/invoices",
     ["invoices"]
   );
+  const {
+    data: profiles,
+    error: profilesError,
+    isLoading: profilesLoading,
+    mutate: mutateProfiles,
+  } = useInvoicingData<InvoiceProfile[]>("/api/invoicing/profiles", ["profiles"]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
+  const profilePrefixes = useMemo(
+    () =>
+      new Map(
+        (profiles || []).map((profile) => [profile.id, profile.settings.prefix])
+      ),
+    [profiles]
+  );
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -44,24 +79,27 @@ export default function InvoicesPage() {
       const matchesQuery =
         !needle ||
         invoice.formattedNumber.toLowerCase().includes(needle) ||
+        displayedInvoiceNumber(invoice, profilePrefixes)
+          .toLowerCase()
+          .includes(needle) ||
         invoice.clientSnapshot.name.toLowerCase().includes(needle) ||
         invoice.clientSnapshot.company?.toLowerCase().includes(needle);
       return matchesStatus && matchesQuery;
     });
-  }, [filter, invoices, query]);
+  }, [filter, invoices, profilePrefixes, query]);
 
   const outstanding = (invoices || []).filter(
     (invoice) => !["draft", "paid", "void", "refunded"].includes(invoice.status)
   );
   const paid = (invoices || []).filter((invoice) => invoice.paymentStatus === "paid");
 
-  async function deleteDraft(invoice: Invoice) {
+  async function deleteInvoiceRecord(invoice: Invoice) {
     setDeleting(invoice.id);
     try {
       await invoicingRequest(`/api/invoicing/invoices/${invoice.id}`, { method: "DELETE" });
       await mutate();
       setDeleteTarget(null);
-      toast({ variant: "success", title: "Draft deleted" });
+      toast({ variant: "success", title: "Invoice deleted" });
     } catch (deleteError) {
       toast({
         variant: "error",
@@ -73,30 +111,60 @@ export default function InvoicesPage() {
     }
   }
 
-  async function duplicateInvoice(invoice: Invoice) {
-    setDuplicating(invoice.id);
-    toast({
-      variant: "info",
-      title: "Duplicating invoice",
-      description: `${invoice.formattedNumber} is being copied into a new draft.`,
-      duration: 1800,
-    });
+  async function downloadPdf(invoice: Invoice) {
+    setDownloading(invoice.id);
     try {
-      const copy = await invoicingRequest<Invoice>(
-        `/api/invoicing/invoices/${encodeURIComponent(invoice.id)}`,
-        { method: "PATCH", ...jsonBody({ action: "duplicate" }) }
+      const response = await fetch(
+        `/api/invoicing/invoices/${encodeURIComponent(invoice.id)}/pdf`
       );
-      await mutate();
-      toast({ variant: "success", title: "Invoice duplicated" });
-      router.push(`/invoices/${copy.id}/edit`);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error || `PDF download failed (${response.status})`);
+      }
+
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${
+        invoice.formattedNumber.replace(/[^A-Za-z0-9_-]+/g, "-") || "invoice"
+      }.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (downloadError) {
+      toast({
+        variant: "error",
+        title: "Invoice PDF not downloaded",
+        description:
+          downloadError instanceof Error ? downloadError.message : "Please try again.",
+      });
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  function duplicateInvoice(invoice: Invoice) {
+    try {
+      const storageId = `duplicate:${invoice.id}`;
+      window.localStorage.setItem(
+        invoiceDraftStorageKey(invoice.ownerUid, storageId),
+        JSON.stringify(duplicateInvoiceFormDraft(invoice))
+      );
+      toast({
+        variant: "info",
+        title: "Invoice copied",
+        description: "Review the duplicated details before saving the new invoice.",
+      });
+      router.push(`/invoices/create?duplicate=${encodeURIComponent(invoice.id)}`);
     } catch (duplicateError) {
       toast({
         variant: "error",
         title: "Invoice not duplicated",
         description: duplicateError instanceof Error ? duplicateError.message : "Please try again.",
       });
-    } finally {
-      setDuplicating(null);
     }
   }
 
@@ -112,7 +180,7 @@ export default function InvoicesPage() {
         }
       />
 
-      {!isLoading && !error && (
+      {!isLoading && !profilesLoading && !error && !profilesError && (
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard label="Total invoices" value={invoices?.length || 0} />
           <StatCard label="Outstanding" value={outstanding.length} />
@@ -120,10 +188,16 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading || profilesLoading ? (
         <LoadingState rows={5} />
-      ) : error ? (
-        <ErrorState message={error.message} onRetry={() => mutate()} />
+      ) : error || profilesError ? (
+        <ErrorState
+          message={(error || profilesError)?.message}
+          onRetry={() => {
+            void mutate();
+            void mutateProfiles();
+          }}
+        />
       ) : !invoices?.length ? (
         <EmptyState
           title="No invoices yet"
@@ -151,7 +225,9 @@ export default function InvoicesPage() {
               >
                 <Link href={`/invoices/${invoice.id}`} className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{invoice.formattedNumber}</p>
+                    <p className="font-medium text-foreground">
+                      {displayedInvoiceNumber(invoice, profilePrefixes)}
+                    </p>
                     <InvoiceStatusBadge status={invoice.status} />
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -185,33 +261,44 @@ export default function InvoicesPage() {
                       <Edit3 className="h-4 w-4" /> Edit
                     </Button>
                   )}
-                  <SubmitButton
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    pending={duplicating === invoice.id}
-                    disabled={Boolean(duplicating)}
-                    onClick={() => void duplicateInvoice(invoice)}
-                  >
-                    <Copy className="h-4 w-4" /> Duplicate
-                  </SubmitButton>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={invoice.status !== "draft" || deleting === invoice.id}
+                    disabled={Boolean(downloading)}
+                    onClick={() => void downloadPdf(invoice)}
+                    aria-label={`Download ${invoice.formattedNumber} PDF`}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloading === invoice.id ? "Downloading…" : "PDF"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => duplicateInvoice(invoice)}
+                  >
+                    <Copy className="h-4 w-4" /> Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={
+                      !["draft", "void"].includes(invoice.status) ||
+                      deleting === invoice.id
+                    }
                     onClick={() => setDeleteTarget(invoice)}
                     title={
-                      invoice.status === "draft"
-                        ? "Delete draft"
+                      ["draft", "void"].includes(invoice.status)
+                        ? `Delete ${invoice.status} invoice`
                         : "Published invoices cannot be deleted"
                     }
                     aria-label={
-                      invoice.status === "draft"
+                      ["draft", "void"].includes(invoice.status)
                         ? `Delete ${invoice.formattedNumber}`
                         : `Delete ${invoice.formattedNumber} unavailable after publishing`
                     }
-                    className="text-muted-foreground hover:border-danger/40 hover:text-danger"
                   >
                     <Trash2 className="h-4 w-4" /> Delete
                   </Button>
@@ -229,12 +316,12 @@ export default function InvoicesPage() {
       <ConfirmationDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete draft invoice?"
-        description={`${deleteTarget?.formattedNumber || "This draft"} will be permanently deleted. This action cannot be undone.`}
-        confirmLabel="Delete draft"
+        title="Delete invoice?"
+        description={`${deleteTarget?.formattedNumber || "This invoice"} will be permanently deleted. This action cannot be undone.`}
+        confirmLabel="Delete invoice"
         pending={Boolean(deleting)}
         destructive
-        onConfirm={() => deleteTarget && void deleteDraft(deleteTarget)}
+        onConfirm={() => deleteTarget && void deleteInvoiceRecord(deleteTarget)}
       />
     </div>
   );

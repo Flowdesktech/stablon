@@ -90,6 +90,13 @@ export const invoiceLineItemInputSchema = z.object({
 export const invoiceInputSchema = z.object({
   profileId: z.string().trim().min(1).max(128),
   clientId: z.string().trim().min(1).max(128),
+  formattedNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[^\u0000-\u001F\u007F]+$/, "Invoice number contains unsupported characters")
+    .optional(),
   issueDate: z.string().date(),
   dueDate: z.string().date(),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()),

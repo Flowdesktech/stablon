@@ -309,7 +309,8 @@ export async function createInvoice(
       profileId: profile.id,
       clientId: client.id,
       invoiceNumber: nextNumber,
-      formattedNumber: formatInvoiceNumber(profile.settings.prefix, nextNumber),
+      formattedNumber:
+        input.formattedNumber || formatInvoiceNumber(profile.settings.prefix, nextNumber),
       issueDate: input.issueDate,
       dueDate: input.dueDate,
       status: "draft",
@@ -390,6 +391,7 @@ export async function updateInvoice(
     .doc(invoiceId)
     .update({
       clientId: client.id,
+      formattedNumber: input.formattedNumber || invoice.formattedNumber,
       issueDate: input.issueDate,
       dueDate: input.dueDate,
       currency: input.currency,
@@ -499,7 +501,9 @@ export async function getInvoiceByPublicToken(
 
 export async function deleteInvoice(ownerUid: string, invoiceId: string): Promise<void> {
   const invoice = await getInvoice(ownerUid, invoiceId);
-  if (invoice.status !== "draft") throw new Error("Only draft invoices can be deleted");
+  if (invoice.status !== "draft" && invoice.status !== "void") {
+    throw new Error("Only draft or void invoices can be deleted");
+  }
   await db().collection("invoices").doc(invoiceId).delete();
 }
 

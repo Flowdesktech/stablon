@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays } from "date-fns";
 import { ArrowLeft, Edit3, Eye, FileCheck2, Plus } from "lucide-react";
@@ -45,18 +45,49 @@ import type {
   InvoiceTotals,
 } from "@/types/invoicing";
 import type { RenderableInvoice } from "@/lib/invoicing/renderable";
-import type { InvoiceFit } from "@/lib/invoicing/page-fit";
+import { INVOICE_TEMPLATES } from "@/lib/invoicing/templates";
+import {
+  invoiceDraftStorageKey,
+  type InvoiceFormDraftData,
+} from "@/lib/invoicing/draft-cache";
 
 function dateValue(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function dueDateFromIssueDate(issueDate: string, duration: number) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(issueDate)) return "";
+  const date = new Date(`${issueDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setUTCDate(date.getUTCDate() + duration);
+  return dateValue(date);
+}
+
+function nextFormattedInvoiceNumber(profile: InvoiceProfile) {
+  return `${profile.settings.prefix}-${String(profile.settings.nextNumber).padStart(5, "0")}`;
+}
+
+function readCachedInvoiceDraft(key: string): Partial<InvoiceFormDraftData> | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object"
+      ? (parsed as Partial<InvoiceFormDraftData>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function InvoiceForm({
   invoice,
   initialTemplateId,
+  draftStorageId,
 }: {
   invoice?: Invoice;
   initialTemplateId?: string;
+  draftStorageId?: string;
 }) {
   const router = useRouter();
   const editing = Boolean(invoice);
@@ -67,6 +98,7 @@ export function InvoiceForm({
 
   const [profileId, setProfileId] = useState(invoice?.profileId || "");
   const [clientId, setClientId] = useState(invoice?.clientId || "");
+  const [invoiceNumber, setInvoiceNumber] = useState(invoice?.formattedNumber || "");
   const [issueDate, setIssueDate] = useState(invoice?.issueDate || dateValue(new Date()));
   const [dueDate, setDueDate] = useState(
     invoice?.dueDate || dateValue(addDays(new Date(), 7))
@@ -96,10 +128,18 @@ export function InvoiceForm({
   );
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [pageFit, setPageFit] = useState<InvoiceFit | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientDialogClient, setClientDialogClient] = useState<InvoiceClient | null>(null);
+  const invoiceNumberInitialized = useRef(editing);
+  const duplicateDueDateInitialized = useRef(
+    !draftStorageId?.startsWith("duplicate:")
+  );
 
+  const ownerUid = invoice?.ownerUid || profiles?.[0]?.ownerUid;
+  const draftStorageKey = ownerUid
+    ? invoiceDraftStorageKey(ownerUid, invoice?.id || draftStorageId || "create")
+    : null;
   const selectedProfile = profiles?.find((profile) => profile.id === profileId);
   const selectedClient = clients?.find((client) => client.id === clientId);
   const filteredClients = useMemo(
@@ -108,20 +148,175 @@ export function InvoiceForm({
   );
 
   useEffect(() => {
-    if (profileId || !profiles?.length) return;
+    if (!draftStorageKey) return;
+    const cached = readCachedInvoiceDraft(draftStorageKey);
+
+    queueMicrotask(() => {
+      if (cached) {
+        if (typeof cached.profileId === "string") setProfileId(cached.profileId);
+        if (typeof cached.clientId === "string") setClientId(cached.clientId);
+        if (typeof cached.invoiceNumber === "string" && cached.invoiceNumber.trim()) {
+          setInvoiceNumber(cached.invoiceNumber.slice(0, 80));
+          invoiceNumberInitialized.current = true;
+        }
+        if (
+          typeof cached.issueDate === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(cached.issueDate)
+        ) {
+          setIssueDate(cached.issueDate);
+        }
+        if (
+          typeof cached.dueDate === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(cached.dueDate)
+        ) {
+          setDueDate(cached.dueDate);
+        }
+        if (typeof cached.currency === "string" && cached.currency.trim()) {
+          setCurrency(cached.currency.trim().toUpperCase().slice(0, 3));
+        }
+        if (Array.isArray(cached.lineItems)) {
+          const restoredItems = cached.lineItems
+            .slice(0, 100)
+            .map((item): EditableLineItem | null => {
+              if (!item || typeof item !== "object") return null;
+              return {
+                ...(typeof item.id === "string" && item.id ? { id: item.id } : {}),
+                description:
+                  typeof item.description === "string"
+                    ? item.description.slice(0, 500)
+                    : "",
+                quantity:
+                  typeof item.quantity === "string" ? item.quantity.slice(0, 40) : "1",
+                rate: typeof item.rate === "string" ? item.rate.slice(0, 40) : "0",
+              };
+            })
+            .filter((item): item is EditableLineItem => Boolean(item));
+          if (restoredItems.length) setLineItems(restoredItems);
+        }
+        if (typeof cached.taxRate === "string") setTaxRate(cached.taxRate);
+        if (
+          cached.discountType === "none" ||
+          cached.discountType === "percent" ||
+          cached.discountType === "fixed"
+        ) {
+          setDiscountType(cached.discountType);
+        }
+        if (typeof cached.discountValue === "string") {
+          setDiscountValue(cached.discountValue);
+        }
+        if (typeof cached.notes === "string") setNotes(cached.notes.slice(0, 5000));
+        if (typeof cached.paymentTerms === "string") {
+          setPaymentTerms(cached.paymentTerms.slice(0, 160));
+        }
+        if (
+          (!initialTemplateId || editing) &&
+          typeof cached.templateId === "string" &&
+          INVOICE_TEMPLATES.some((template) => template.id === cached.templateId)
+        ) {
+          setTemplateId(cached.templateId);
+        }
+      }
+      setDraftReady(true);
+    });
+  }, [draftStorageKey, editing, initialTemplateId]);
+
+  useEffect(() => {
+    if (!draftReady || !draftStorageKey) return;
+    const timer = window.setTimeout(() => {
+      const draft: InvoiceFormDraftData = {
+        profileId,
+        clientId,
+        invoiceNumber,
+        issueDate,
+        dueDate,
+        currency,
+        lineItems,
+        taxRate,
+        discountType,
+        discountValue,
+        notes,
+        paymentTerms,
+        templateId,
+      };
+      try {
+        window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+      } catch {
+        // The invoice form still works when browser storage is unavailable.
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    clientId,
+    currency,
+    discountType,
+    discountValue,
+    draftReady,
+    draftStorageKey,
+    dueDate,
+    issueDate,
+    invoiceNumber,
+    lineItems,
+    notes,
+    paymentTerms,
+    profileId,
+    taxRate,
+    templateId,
+  ]);
+
+  useEffect(() => {
+    if (!profiles?.length) return;
+    if (profileId && profiles.some((profile) => profile.id === profileId)) return;
     const profile = profiles.find((entry) => entry.isDefault) || profiles[0];
     setProfileId(profile.id);
     setCurrency(profile.settings.currency);
     setTaxRate(profile.settings.taxRate);
     setPaymentTerms(profile.settings.paymentTerms);
     if (!initialTemplateId) setTemplateId(profile.settings.templateId);
-    setDueDate(dateValue(addDays(new Date(issueDate), profile.settings.dueDateDuration)));
+    setDueDate(
+      dueDateFromIssueDate(issueDate, profile.settings.dueDateDuration) ||
+        dateValue(addDays(new Date(), profile.settings.dueDateDuration))
+    );
   }, [profiles, profileId, issueDate, initialTemplateId]);
 
   useEffect(() => {
+    if (
+      editing ||
+      !draftReady ||
+      invoiceNumberInitialized.current ||
+      !profiles?.length
+    ) {
+      return;
+    }
+    const profile =
+      profiles.find((entry) => entry.id === profileId) ||
+      profiles.find((entry) => entry.isDefault) ||
+      profiles[0];
+    invoiceNumberInitialized.current = true;
+    setInvoiceNumber(nextFormattedInvoiceNumber(profile));
+  }, [draftReady, editing, profileId, profiles]);
+
+  useEffect(() => {
+    if (
+      !draftReady ||
+      !selectedProfile ||
+      duplicateDueDateInitialized.current
+    ) {
+      return;
+    }
+    duplicateDueDateInitialized.current = true;
+    const nextDueDate = dueDateFromIssueDate(
+      issueDate,
+      selectedProfile.settings.dueDateDuration
+    );
+    if (nextDueDate) setDueDate(nextDueDate);
+  }, [draftReady, issueDate, selectedProfile]);
+
+  useEffect(() => {
+    if (!clients) return;
     if (!clientId || filteredClients.some((client) => client.id === clientId)) return;
     setClientId("");
-  }, [clientId, filteredClients]);
+  }, [clientId, clients, filteredClients]);
 
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce(
@@ -151,8 +346,7 @@ export function InvoiceForm({
 
     return {
       formattedNumber:
-        invoice?.formattedNumber ||
-        `${selectedProfile?.settings.prefix || "INV"}-PREVIEW`,
+        invoiceNumber.trim() || `${selectedProfile?.settings.prefix || "INV"}-PREVIEW`,
       issueDate,
       dueDate,
       currency,
@@ -218,7 +412,7 @@ export function InvoiceForm({
     discountType,
     discountValue,
     dueDate,
-    invoice?.formattedNumber,
+    invoiceNumber,
     issueDate,
     lineItems,
     notes,
@@ -235,33 +429,29 @@ export function InvoiceForm({
     setClientId("");
     const next = profiles?.find((profile) => profile.id === nextId);
     if (!next) return;
+    if (!editing) setInvoiceNumber(nextFormattedInvoiceNumber(next));
     setCurrency(next.settings.currency);
     setTaxRate(next.settings.taxRate);
     setPaymentTerms(next.settings.paymentTerms);
     setTemplateId(next.settings.templateId);
-    setDueDate(dateValue(addDays(new Date(issueDate), next.settings.dueDateDuration)));
+    setDueDate(
+      dueDateFromIssueDate(issueDate, next.settings.dueDateDuration) ||
+        dateValue(addDays(new Date(), next.settings.dueDateDuration))
+    );
+  }
+
+  function changeIssueDate(nextIssueDate: string) {
+    setIssueDate(nextIssueDate);
+    if (!selectedProfile) return;
+    const nextDueDate = dueDateFromIssueDate(
+      nextIssueDate,
+      selectedProfile.settings.dueDateDuration
+    );
+    if (nextDueDate) setDueDate(nextDueDate);
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!pageFit) {
-      toast({
-        variant: "info",
-        title: "Checking invoice layout",
-        description: "Wait for the one-page preview check to finish, then save again.",
-      });
-      return;
-    }
-    if (!pageFit.fits) {
-      toast({
-        variant: "error",
-        title: "Invoice is too long",
-        description:
-          "Shorten line-item descriptions, remove items, or reduce the notes so it fits on one readable A4 page.",
-      });
-      setPreviewOpen(true);
-      return;
-    }
     if (!profileId || !clientId) {
       toast({
         variant: "error",
@@ -276,6 +466,7 @@ export function InvoiceForm({
       const payload = {
         profileId,
         clientId,
+        formattedNumber: invoiceNumber.trim(),
         issueDate,
         dueDate,
         currency,
@@ -305,6 +496,9 @@ export function InvoiceForm({
         title: editing ? "Invoice updated" : "Invoice created",
         description: `${saved.formattedNumber || "Your draft"} is ready.`,
       });
+      if (draftStorageKey) {
+        window.localStorage.removeItem(draftStorageKey);
+      }
       router.push(`/invoices/${saved.id}`);
       router.refresh();
     } catch (error) {
@@ -353,13 +547,16 @@ export function InvoiceForm({
               <Eye className="h-4 w-4" />
               Preview
             </Button>
-            <SubmitButton pending={saving} disabled={!pageFit?.fits}>
+            <SubmitButton pending={saving}>
               <FileCheck2 className="h-4 w-4" />
               {editing ? "Save changes" : "Save draft"}
             </SubmitButton>
           </div>
         }
       />
+      <p className="text-xs leading-5 text-muted-foreground">
+        Unsaved changes are stored in this browser and restored when you reload this page.
+      </p>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-6">
@@ -454,12 +651,20 @@ export function InvoiceForm({
                   </div>
                 </div>
               </div>
+              <Field label="Invoice number">
+                <Input
+                  required
+                  maxLength={80}
+                  value={invoiceNumber}
+                  onChange={(event) => setInvoiceNumber(event.target.value)}
+                />
+              </Field>
               <Field label="Issue date">
                 <Input
                   type="date"
                   required
                   value={issueDate}
-                  onChange={(event) => setIssueDate(event.target.value)}
+                  onChange={(event) => changeIssueDate(event.target.value)}
                 />
               </Field>
               <Field label="Due date">
@@ -586,16 +791,9 @@ export function InvoiceForm({
               <p className="pt-2 text-xs text-muted-foreground">
                 The server validates and recalculates all monetary values when saved.
               </p>
-              {!pageFit ? (
-                <p className="text-xs text-muted-foreground">Checking one-page A4 fit…</p>
-              ) : !pageFit.fits ? (
-                <p role="alert" className="text-xs leading-5 text-danger">
-                  This invoice is too long for one readable page. Preview it and shorten the
-                  line items or notes before saving.
-                </p>
-              ) : (
-                <p className="text-xs text-success">Fits on one A4 page.</p>
-              )}
+              <p className="text-xs leading-5 text-muted-foreground">
+                Open Preview to check one-page A4 fit before publishing or downloading.
+              </p>
             </CardContent>
           </Card>
         </aside>
@@ -612,7 +810,7 @@ export function InvoiceForm({
           </DialogHeader>
           <div className="overflow-x-auto rounded-lg border border-border bg-surface-muted p-3 sm:p-6">
             <div className="mx-auto min-w-[46rem] max-w-[50rem]">
-              <InvoicePreview invoice={previewInvoice} />
+              {previewOpen ? <InvoicePreview invoice={previewInvoice} /> : null}
             </div>
           </div>
           <div className="flex justify-end pt-2">
@@ -622,16 +820,6 @@ export function InvoiceForm({
           </div>
         </DialogContent>
       </Dialog>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-[-10000px] top-0 w-[794px] opacity-0"
-      >
-        <InvoicePreview
-          invoice={previewInvoice}
-          paymentUrl="https://stablon.app/pay/preview"
-          onFitChange={setPageFit}
-        />
-      </div>
       <ClientDialog
         open={clientDialogOpen}
         onOpenChange={setClientDialogOpen}
