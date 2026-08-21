@@ -40,6 +40,31 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
   );
 }
 
+export function invoiceDeletionCopy(
+  invoice:
+    | {
+        formattedNumber: string;
+        status: InvoiceStatus;
+      }
+    | null
+    | undefined
+) {
+  if (!invoice || invoice.status === "draft") {
+    return {
+      title: "Delete draft invoice?",
+      description: `${
+        invoice?.formattedNumber || "This draft"
+      } will be permanently deleted. This action cannot be undone.`,
+    };
+  }
+
+  const status = invoice.status.replaceAll("_", " ");
+  return {
+    title: `Permanently delete ${status} invoice?`,
+    description: `Warning: ${invoice.formattedNumber} is a ${status} invoice. Its public link and in-app activity will be permanently removed. Sent emails and downloaded PDFs cannot be recalled, and deletion does not reverse payments or refunds. Export any records you need before continuing. This action cannot be undone.`,
+  };
+}
+
 export function formatInvoiceMoney(value: string | number, currency = "USD") {
   const amount = Number(value);
   try {

@@ -96,9 +96,11 @@ Start from `.env.example`, which documents defaults and feature-specific values.
 | `APP_SECRET` | Stable encryption key material for protected account secrets |
 | `BRIDGE_API_KEY` | Bridge server API key |
 
-The optional Firebase web values `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` and
-`NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` can be copied from the same Firebase
-web-app configuration.
+The optional Firebase web values `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`,
+`NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, and
+`NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` can be copied from the same Firebase
+web-app configuration. Analytics is initialized only in supported browsers when
+the measurement ID is configured.
 
 ### URLs and Bridge behavior
 
@@ -151,10 +153,12 @@ web-app configuration.
 1. Enable Email/Password and Google in Firebase Authentication.
 2. Create a Cloud Firestore database.
 3. Create a web application and copy its public configuration.
-4. Create a service-account key for the Firebase Admin values.
-5. Add local and deployed domains to Authentication → Authorized domains. Google popup sign-in
+4. Enable Google Analytics for the Firebase project and copy the web stream's
+   measurement ID into `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`.
+5. Create a service-account key for the Firebase Admin values.
+6. Add local and deployed domains to Authentication → Authorized domains. Google popup sign-in
    fails with `auth/unauthorized-domain` when the current hostname is missing.
-6. Deploy the included rules and indexes:
+7. Deploy the included rules and indexes:
 
 ```bash
 npx -y firebase-tools@latest deploy --only auth,firestore:rules,firestore:indexes

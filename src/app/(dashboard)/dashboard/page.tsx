@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Loader2,
   Files,
+  FilePlus2,
 } from "lucide-react";
 
 const quickActions = [
@@ -211,33 +212,66 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-info-muted">
-              <Files className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-foreground">Invoicing</p>
-                  <p className="text-sm text-muted-foreground">Create invoices and collect payments.</p>
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.9fr)]">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-info-muted text-primary">
+                  <Files className="h-6 w-6" aria-hidden="true" />
                 </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Get paid
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-foreground">
+                    Invoicing
+                  </h2>
+                  <p className="mt-1 max-w-lg text-sm leading-6 text-muted-foreground">
+                    Create professional invoices, send payment links, and track
+                    collections from one workflow.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button asChild size="sm">
+                  <Link href="/invoices/create">
+                    <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+                    New invoice
+                  </Link>
+                </Button>
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/invoices">View invoices</Link>
+                  <Link href="/invoices">
+                    View invoices
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </Button>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-center sm:max-w-md sm:text-left">
-                <div>
-                  <p className="text-lg font-semibold text-foreground">{invoiceStats?.total ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
+            </div>
+
+            <div className="border-t border-border bg-surface-subtle p-4 sm:p-5 lg:border-l lg:border-t-0">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Invoice overview
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="rounded-lg border border-border bg-surface p-3 sm:p-4">
+                  <p className="text-2xl font-semibold tabular-nums text-foreground">
+                    {invoiceStats?.total ?? "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Total</p>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-warning">{invoiceStats?.outstanding ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">Outstanding</p>
+                <div className="rounded-lg border border-warning/25 bg-warning-muted p-3 sm:p-4">
+                  <p className="text-2xl font-semibold tabular-nums text-warning">
+                    {invoiceStats?.outstanding ?? "—"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Outstanding
+                  </p>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-success">{invoiceStats?.paid ?? "—"}</p>
+                <div className="rounded-lg border border-success/25 bg-success-muted p-3 sm:p-4">
+                  <p className="text-2xl font-semibold tabular-nums text-success">
+                    {invoiceStats?.paid ?? "—"}
+                  </p>
                   <p className="text-xs text-muted-foreground">Paid</p>
                 </div>
               </div>

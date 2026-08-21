@@ -500,10 +500,7 @@ export async function getInvoiceByPublicToken(
 }
 
 export async function deleteInvoice(ownerUid: string, invoiceId: string): Promise<void> {
-  const invoice = await getInvoice(ownerUid, invoiceId);
-  if (invoice.status !== "draft" && invoice.status !== "void") {
-    throw new Error("Only draft or void invoices can be deleted");
-  }
+  await getInvoice(ownerUid, invoiceId);
   await db().collection("invoices").doc(invoiceId).delete();
 }
 

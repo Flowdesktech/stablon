@@ -25,6 +25,7 @@ import {
   LoadingState,
   PageHeading,
   formatInvoiceMoney,
+  invoiceDeletionCopy,
 } from "@/components/invoicing/invoice-ui";
 import { Select } from "@/components/ui/field";
 import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
@@ -92,6 +93,7 @@ export default function InvoicesPage() {
     (invoice) => !["draft", "paid", "void", "refunded"].includes(invoice.status)
   );
   const paid = (invoices || []).filter((invoice) => invoice.paymentStatus === "paid");
+  const deleteCopy = invoiceDeletionCopy(deleteTarget);
 
   async function deleteInvoiceRecord(invoice: Invoice) {
     setDeleting(invoice.id);
@@ -284,21 +286,10 @@ export default function InvoicesPage() {
                     type="button"
                     variant="destructive"
                     size="sm"
-                    disabled={
-                      !["draft", "void"].includes(invoice.status) ||
-                      deleting === invoice.id
-                    }
+                    disabled={deleting === invoice.id}
                     onClick={() => setDeleteTarget(invoice)}
-                    title={
-                      ["draft", "void"].includes(invoice.status)
-                        ? `Delete ${invoice.status} invoice`
-                        : "Published invoices cannot be deleted"
-                    }
-                    aria-label={
-                      ["draft", "void"].includes(invoice.status)
-                        ? `Delete ${invoice.formattedNumber}`
-                        : `Delete ${invoice.formattedNumber} unavailable after publishing`
-                    }
+                    title={`Delete ${invoice.status.replaceAll("_", " ")} invoice`}
+                    aria-label={`Delete ${invoice.formattedNumber}`}
                   >
                     <Trash2 className="h-4 w-4" /> Delete
                   </Button>
@@ -316,8 +307,8 @@ export default function InvoicesPage() {
       <ConfirmationDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete invoice?"
-        description={`${deleteTarget?.formattedNumber || "This invoice"} will be permanently deleted. This action cannot be undone.`}
+        title={deleteCopy.title}
+        description={deleteCopy.description}
         confirmLabel="Delete invoice"
         pending={Boolean(deleting)}
         destructive

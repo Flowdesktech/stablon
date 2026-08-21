@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
 
-const effectiveDate = "August 20, 2026";
+const effectiveDate = "August 21, 2026";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -45,7 +45,7 @@ const sections: LegalSection[] = [
       "Invoice and client information, including sender and recipient details, line items, taxes, discounts, terms, notes, templates, due dates, email-delivery status, and recurring schedules.",
       "Payment and transaction information, such as provider identifiers, account and wallet references, payment routes, currencies, assets, amounts, destinations, references, fees, and status updates.",
       "Support communications and information you submit through contact forms.",
-      "Technical and security information, including IP address, browser and device data, request logs, session activity, rate-limit signals, and events used to prevent fraud or protect accounts.",
+      "Technical, analytics, and security information, including IP address, browser and device data, page views, product interactions, request logs, session activity, rate-limit signals, and events used to improve the service, prevent fraud, or protect accounts.",
     ],
   },
   {
@@ -89,7 +89,7 @@ const sections: LegalSection[] = [
     ],
     bullets: [
       "Bridge and other financial infrastructure providers that support verification, accounts, transfers, settlement, cards, or payment services.",
-      "Firebase and Google services used for authentication, server administration, and application data storage.",
+      "Firebase and Google services used for authentication, analytics, server administration, and application data storage.",
       "Hosting, infrastructure, security, monitoring, and deployment providers such as Vercel.",
       "Email providers such as Resend when you send invoices or support requests.",
       "Payment processors such as NOWPayments if an enabled account-setup billing flow is used.",
@@ -110,7 +110,8 @@ const sections: LegalSection[] = [
     title: "Cookies and local storage",
     paragraphs: [
       "Stablon uses essential session cookies to keep authenticated users signed in and protect restricted pages. The application can also use browser local storage for preferences and security-related state, including the selected color theme and app-lock activity.",
-      "These technologies are used for service operation, security, and preferences rather than cross-site advertising. Blocking essential storage can prevent authentication or product features from working correctly.",
+      "When Firebase Analytics is configured, analytics cookies and browser identifiers can also be used to measure page views, product interactions, device characteristics, and service performance. Analytics is used for product improvement rather than cross-site advertising.",
+      "Blocking essential storage can prevent authentication or product features from working correctly. Browser privacy controls can also limit analytics collection.",
     ],
   },
   {

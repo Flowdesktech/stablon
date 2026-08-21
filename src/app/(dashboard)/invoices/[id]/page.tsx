@@ -23,6 +23,7 @@ import {
   LoadingState,
   SubmitButton,
   formatInvoiceMoney,
+  invoiceDeletionCopy,
 } from "@/components/invoicing/invoice-ui";
 import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
 import {
@@ -196,6 +197,7 @@ export default function InvoiceDetailPage() {
     invoice.status
   );
   const canVoid = !["draft", "paid", "void", "refunded"].includes(invoice.status);
+  const deleteCopy = invoiceDeletionCopy(invoice);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -228,17 +230,15 @@ export default function InvoiceDetailPage() {
               </SubmitButton>
             </>
           )}
-          {["draft", "void"].includes(invoice.status) && (
-            <Button
-              variant="destructive"
-              size="icon"
-              disabled={action === "delete"}
-              onClick={() => setDeleteOpen(true)}
-              aria-label={`Delete ${invoice.status} invoice`}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="destructive"
+            size="icon"
+            disabled={action === "delete"}
+            onClick={() => setDeleteOpen(true)}
+            aria-label={`Delete ${invoice.status.replaceAll("_", " ")} invoice`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
           {canSend && (
             <SubmitButton pending={action === "send"} onClick={() => setSendOpen(true)}>
               <Mail className="h-4 w-4" /> Send invoice
@@ -400,8 +400,8 @@ export default function InvoiceDetailPage() {
       <ConfirmationDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete invoice?"
-        description={`${invoice.formattedNumber} will be permanently deleted. This action cannot be undone.`}
+        title={deleteCopy.title}
+        description={deleteCopy.description}
         confirmLabel="Delete invoice"
         pending={action === "delete"}
         destructive
