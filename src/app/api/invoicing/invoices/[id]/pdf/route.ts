@@ -36,11 +36,15 @@ export async function GET(request: Request, context: Context) {
           ).toString()
         : undefined;
     const buffer = await renderInvoicePdf(toRenderableInvoice(invoice), paymentUrl);
+    const disposition =
+      new URL(request.url).searchParams.get("disposition") === "inline"
+        ? "inline"
+        : "attachment";
 
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${safeInvoiceFilename(invoice.formattedNumber)}"`,
+        "Content-Disposition": `${disposition}; filename="${safeInvoiceFilename(invoice.formattedNumber)}"`,
         "Cache-Control": "private, no-store, max-age=0",
         "X-Content-Type-Options": "nosniff",
       },

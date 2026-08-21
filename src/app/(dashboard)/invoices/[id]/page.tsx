@@ -8,13 +8,23 @@ import {
   Download,
   Edit3,
   ExternalLink,
+  FileText,
+  Globe2,
   Mail,
-  Send,
+  MoreHorizontal,
+  Ban,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/toast";
 import {
   ConfirmationDialog,
@@ -22,7 +32,6 @@ import {
   InvoiceStatusBadge,
   LoadingState,
   SubmitButton,
-  formatInvoiceMoney,
   invoiceDeletionCopy,
 } from "@/components/invoicing/invoice-ui";
 import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
@@ -198,6 +207,11 @@ export default function InvoiceDetailPage() {
   );
   const canVoid = !["draft", "paid", "void", "refunded"].includes(invoice.status);
   const deleteCopy = invoiceDeletionCopy(invoice);
+  const pdfPreviewUrl = `/api/invoicing/invoices/${encodeURIComponent(
+    invoice.id
+  )}/pdf?disposition=inline&v=${encodeURIComponent(
+    invoice.updatedAt
+  )}#toolbar=0&navpanes=0&view=FitH`;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -219,33 +233,18 @@ export default function InvoiceDetailPage() {
             {new Date(`${invoice.dueDate}T00:00:00`).toLocaleDateString()}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {invoice.status === "draft" && (
-            <>
-              <Button asChild variant="outline">
-                <Link href={`/invoices/${invoice.id}/edit`}><Edit3 className="h-4 w-4" /> Edit</Link>
-              </Button>
-              <SubmitButton pending={action === "publish"} onClick={() => runAction("publish")}>
-                <Send className="h-4 w-4" /> Publish
-              </SubmitButton>
-            </>
-          )}
-          <Button
-            variant="destructive"
-            size="icon"
-            disabled={action === "delete"}
-            onClick={() => setDeleteOpen(true)}
-            aria-label={`Delete ${invoice.status.replaceAll("_", " ")} invoice`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {canSend && (
-            <SubmitButton pending={action === "send"} onClick={() => setSendOpen(true)}>
-              <Mail className="h-4 w-4" /> Send invoice
-            </SubmitButton>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/invoices/${invoice.id}/edit`}>
+                <Edit3 className="h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
           )}
           <Button
             variant="outline"
+            size="sm"
             onClick={duplicateInvoice}
           >
             <Copy className="h-4 w-4" /> Duplicate
@@ -253,20 +252,69 @@ export default function InvoiceDetailPage() {
           <SubmitButton
             type="button"
             variant="outline"
+            size="sm"
             pending={action === "download"}
             onClick={() => void downloadPdf()}
           >
             <Download className="h-4 w-4" /> Download PDF
           </SubmitButton>
-          {canVoid && (
+          {(invoice.status === "draft" || canSend) && (
+            <span
+              className="mx-0.5 hidden h-6 w-px bg-border sm:block"
+              aria-hidden="true"
+            />
+          )}
+          {invoice.status === "draft" && (
             <SubmitButton
-              pending={action === "void"}
               variant="outline"
-              onClick={() => setVoidOpen(true)}
+              size="sm"
+              pending={action === "publish"}
+              onClick={() => runAction("publish")}
             >
-              Void
+              <Globe2 className="h-4 w-4" /> Publish
             </SubmitButton>
           )}
+          {canSend && (
+            <SubmitButton
+              size="sm"
+              pending={action === "send"}
+              onClick={() => setSendOpen(true)}
+            >
+              <Mail className="h-4 w-4" /> Send invoice
+            </SubmitButton>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={Boolean(action)}
+                aria-label="More invoice actions"
+              >
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canVoid ? (
+                <>
+                  <DropdownMenuItem onSelect={() => setVoidOpen(true)}>
+                    <Ban className="h-4 w-4" aria-hidden="true" />
+                    Void invoice
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem
+                variant="danger"
+                onSelect={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Delete invoice
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -293,101 +341,40 @@ export default function InvoiceDetailPage() {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="overflow-hidden border-t-4 border-t-primary">
-          <CardContent className="space-y-8 p-6 sm:p-8">
-            <div className="flex flex-col justify-between gap-5 sm:flex-row">
-              <div>
-                <p className="text-xl font-semibold text-foreground">{invoice.senderSnapshot.company}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{invoice.senderSnapshot.displayName}</p>
-                <p className="text-sm text-muted-foreground">{invoice.senderSnapshot.email}</p>
-              </div>
-              <div className="sm:text-right">
-                <p className="text-2xl font-semibold text-foreground">INVOICE</p>
-                <p className="mt-1 text-sm text-muted-foreground">{invoice.formattedNumber}</p>
-              </div>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-border bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-info-muted text-info">
+              <FileText className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-foreground">Invoice preview</p>
+              <p className="text-xs text-muted-foreground">
+                Exact PDF generated from the selected invoice template.
+              </p>
             </div>
-
-            <div className="grid gap-5 border-y border-border py-5 sm:grid-cols-3">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Bill to</p>
-                <p className="mt-1 font-medium text-foreground">{invoice.clientSnapshot.name}</p>
-                <p className="text-sm text-muted-foreground">{invoice.clientSnapshot.company}</p>
-                <p className="text-sm text-muted-foreground">{invoice.clientSnapshot.email}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Issued</p>
-                <p className="mt-1 text-sm text-foreground">{invoice.issueDate}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Due</p>
-                <p className="mt-1 text-sm text-foreground">{invoice.dueDate}</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-left">
-                <thead className="border-b border-border bg-surface-muted text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="pb-3 font-medium">Description</th>
-                    <th className="pb-3 text-right font-medium">Qty</th>
-                    <th className="pb-3 text-right font-medium">Rate</th>
-                    <th className="pb-3 text-right font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {invoice.lineItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="py-3 text-sm text-foreground">{item.description}</td>
-                      <td className="py-3 text-right text-sm text-muted-foreground">{item.quantity}</td>
-                      <td className="py-3 text-right text-sm text-muted-foreground">
-                        {formatInvoiceMoney(item.rate, invoice.currency)}
-                      </td>
-                      <td className="py-3 text-right text-sm font-medium tabular-nums text-foreground">
-                        {formatInvoiceMoney(item.amount, invoice.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {(invoice.notes || invoice.paymentTerms) && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {invoice.notes && (
-                  <div><p className="text-xs text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{invoice.notes}</p></div>
-                )}
-                {invoice.paymentTerms && (
-                  <div><p className="text-xs text-muted-foreground">Payment terms</p><p className="mt-1 text-sm text-foreground">{invoice.paymentTerms}</p></div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle>Summary</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{formatInvoiceMoney(invoice.totals.subtotal, invoice.currency)}</span></div>
-              {Number(invoice.totals.discountAmount) > 0 && (
-                <div className="flex justify-between text-success"><span>Discount</span><span>-{formatInvoiceMoney(invoice.totals.discountAmount, invoice.currency)}</span></div>
-              )}
-              <div className="flex justify-between text-muted-foreground"><span>Tax</span><span>{formatInvoiceMoney(invoice.totals.taxAmount, invoice.currency)}</span></div>
-              <div className="flex justify-between border-t border-border pt-3 text-lg font-semibold tabular-nums text-foreground"><span>Total</span><span>{formatInvoiceMoney(invoice.totals.total, invoice.currency)}</span></div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Activity</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>Views: <span className="text-foreground">{invoice.viewCount}</span></p>
-              <p>Times sent: <span className="text-foreground">{invoice.sentCount}</span></p>
-              {invoice.lastViewedAt && <p>Last viewed: <span className="text-foreground">{new Date(invoice.lastViewedAt).toLocaleString()}</span></p>}
-              {invoice.lastSentAt && <p>Last sent: <span className="text-foreground">{new Date(invoice.lastSentAt).toLocaleString()}</span></p>}
-            </CardContent>
-          </Card>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href={pdfPreviewUrl} target="_blank" rel="noreferrer">
+              Open PDF
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </Button>
         </div>
-      </div>
+        <CardContent className="bg-surface-muted p-2 sm:p-4">
+          <div className="mx-auto max-w-[64rem] overflow-hidden rounded-md border border-border bg-white shadow-[var(--shadow-sm)]">
+            <iframe
+              key={pdfPreviewUrl}
+              src={pdfPreviewUrl}
+              title={`PDF preview of invoice ${invoice.formattedNumber}`}
+              className="h-[75vh] min-h-[42rem] w-full bg-white"
+            />
+          </div>
+          <p className="px-2 pb-1 pt-3 text-center text-xs text-muted-foreground">
+            If your browser cannot display PDFs, use Open PDF or Download PDF.
+          </p>
+        </CardContent>
+      </Card>
       <ConfirmationDialog
         open={sendOpen}
         onOpenChange={setSendOpen}
