@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ArrowDownToLine,
@@ -39,6 +39,17 @@ interface NavigationItem {
   icon: LucideIcon;
 }
 
+type NavigationGroupId = "payments" | "invoicing" | "account" | "admin";
+type NavigationGroupState = Record<NavigationGroupId, boolean>;
+
+const SIDEBAR_GROUPS_STORAGE_KEY = "stablon:sidebar-groups:v1";
+const DEFAULT_GROUP_STATE: NavigationGroupState = {
+  payments: true,
+  invoicing: true,
+  account: true,
+  admin: true,
+};
+
 const paymentItems: NavigationItem[] = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/deposit", label: "Deposit", icon: ArrowDownToLine },
@@ -69,10 +80,31 @@ const adminItems: NavigationItem[] = [
   { href: "/admin/transactions", label: "Transactions", icon: ReceiptText },
 ];
 
-function groupIsActive(items: NavigationItem[], pathname: string): boolean {
-  return items.some(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-  );
+function parseStoredGroupState(raw: string | null): NavigationGroupState {
+  if (!raw) return { ...DEFAULT_GROUP_STATE };
+  try {
+    const parsed = JSON.parse(raw) as Partial<NavigationGroupState>;
+    return {
+      payments:
+        typeof parsed.payments === "boolean"
+          ? parsed.payments
+          : DEFAULT_GROUP_STATE.payments,
+      invoicing:
+        typeof parsed.invoicing === "boolean"
+          ? parsed.invoicing
+          : DEFAULT_GROUP_STATE.invoicing,
+      account:
+        typeof parsed.account === "boolean"
+          ? parsed.account
+          : DEFAULT_GROUP_STATE.account,
+      admin:
+        typeof parsed.admin === "boolean"
+          ? parsed.admin
+          : DEFAULT_GROUP_STATE.admin,
+    };
+  } catch {
+    return { ...DEFAULT_GROUP_STATE };
+  }
 }
 
 function NavigationGroup({
@@ -81,25 +113,23 @@ function NavigationGroup({
   pathname,
   approved,
   onNavigate,
-  defaultOpen = false,
+  open,
+  onOpenChange,
 }: {
   label: string;
   items: NavigationItem[];
   pathname: string;
   approved: boolean;
   onNavigate: () => void;
-  defaultOpen?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(
-    () => defaultOpen || groupIsActive(items, pathname)
-  );
-
   return (
     <div className="space-y-1">
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => onOpenChange(!open)}
         className="flex w-full items-center justify-between rounded-md px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <span>{label}</span>
@@ -146,7 +176,15 @@ function NavigationGroup({
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
+function SidebarContent({
+  onNavigate,
+  groupState,
+  onGroupOpenChange,
+}: {
+  onNavigate: () => void;
+  groupState: NavigationGroupState;
+  onGroupOpenChange: (group: NavigationGroupId, open: boolean) => void;
+}) {
   const pathname = usePathname();
   const { isApproved } = useKycStatus();
   const { isSuperAdmin } = useProfile();
@@ -196,39 +234,41 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         ) : null}
 
         <NavigationGroup
-          key={`payments-${groupIsActive(paymentItems, pathname)}`}
           label="Payments"
           items={paymentItems}
           pathname={pathname}
           approved={isApproved}
           onNavigate={onNavigate}
-          defaultOpen
+          open={groupState.payments}
+          onOpenChange={(open) => onGroupOpenChange("payments", open)}
         />
         <NavigationGroup
-          key={`invoicing-${groupIsActive(invoiceItems, pathname)}`}
           label="Invoicing"
           items={invoiceItems}
           pathname={pathname}
           approved={isApproved}
           onNavigate={onNavigate}
-          defaultOpen
+          open={groupState.invoicing}
+          onOpenChange={(open) => onGroupOpenChange("invoicing", open)}
         />
         <NavigationGroup
-          key={`account-${groupIsActive(accountItems, pathname)}`}
           label="Account"
           items={accountItems}
           pathname={pathname}
           approved={isApproved}
           onNavigate={onNavigate}
+          open={groupState.account}
+          onOpenChange={(open) => onGroupOpenChange("account", open)}
         />
         {isSuperAdmin ? (
           <NavigationGroup
-            key={`admin-${groupIsActive(adminItems, pathname)}`}
             label="Admin"
             items={adminItems}
             pathname={pathname}
             approved={isApproved}
             onNavigate={onNavigate}
+            open={groupState.admin}
+            onOpenChange={(open) => onGroupOpenChange("admin", open)}
           />
         ) : null}
       </nav>
@@ -247,10 +287,51 @@ export function Sidebar({
   mobileOpen: boolean;
   onMobileOpenChange: (open: boolean) => void;
 }) {
+  const [groupState, setGroupState] =
+    useState<NavigationGroupState>(DEFAULT_GROUP_STATE);
+  const storageLoaded = useRef(false);
+
+  useEffect(() => {
+    let restored = { ...DEFAULT_GROUP_STATE };
+    try {
+      restored = parseStoredGroupState(
+        window.localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY)
+      );
+    } catch {
+      // Use expanded defaults when browser storage is unavailable.
+    }
+    queueMicrotask(() => {
+      storageLoaded.current = true;
+      setGroupState(restored);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!storageLoaded.current) return;
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_GROUPS_STORAGE_KEY,
+        JSON.stringify(groupState)
+      );
+    } catch {
+      // Navigation remains usable when browser storage is unavailable.
+    }
+  }, [groupState]);
+
+  function setGroupOpen(group: NavigationGroupId, open: boolean) {
+    setGroupState((current) =>
+      current[group] === open ? current : { ...current, [group]: open }
+    );
+  }
+
   return (
     <>
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-surface lg:block">
-        <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
+        <SidebarContent
+          onNavigate={() => onMobileOpenChange(false)}
+          groupState={groupState}
+          onGroupOpenChange={setGroupOpen}
+        />
       </aside>
 
       {mobileOpen ? (
@@ -273,7 +354,11 @@ export function Sidebar({
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
+            <SidebarContent
+              onNavigate={() => onMobileOpenChange(false)}
+              groupState={groupState}
+              onGroupOpenChange={setGroupOpen}
+            />
           </aside>
         </div>
       ) : null}
