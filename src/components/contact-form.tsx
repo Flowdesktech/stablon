@@ -9,9 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { Loader2, Send, CheckCircle2 } from "lucide-react";
 
-export function ContactForm() {
+export function ContactForm({ initialEmail = "" }: { initialEmail?: string }) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);

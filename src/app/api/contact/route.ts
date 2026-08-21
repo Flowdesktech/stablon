@@ -4,7 +4,7 @@ import { Resend } from "resend";
 export const maxDuration = 30;
 
 const FROM = process.env.CONTACT_FROM_EMAIL || "Stablon Support <onboarding@resend.dev>";
-const TO = process.env.CONTACT_TO_EMAIL || "contact@flowdesk.tech";
+const TO = process.env.CONTACT_TO_EMAIL || "contact@stablon.app";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE = 5000;

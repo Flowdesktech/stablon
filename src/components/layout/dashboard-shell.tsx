@@ -22,6 +22,7 @@ const routeTitles: Array<[string, string]> = [
   ["/invoicing-settings", "Invoice settings"],
   ["/verify", "Verification"],
   ["/settings", "Settings"],
+  ["/contact", "Contact support"],
   ["/admin/users", "User administration"],
   ["/admin/wallets", "Wallet administration"],
   ["/admin/transactions", "Transaction administration"],

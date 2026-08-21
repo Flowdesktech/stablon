@@ -149,6 +149,16 @@ export default function AboutPage() {
                 software, transparent workflows, security controls, and interfaces that
                 businesses can understand.
               </p>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                For development questions or problems using the application, email{" "}
+                <a
+                  href="mailto:contact@stablon.app"
+                  className="font-medium text-primary hover:underline"
+                >
+                  contact@stablon.app
+                </a>
+                .
+              </p>
               <a
                 href="https://flowdesk.tech"
                 target="_blank"

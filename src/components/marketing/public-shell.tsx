@@ -12,6 +12,7 @@ const navigation = [
   { href: "/blog", label: "Blog" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function Brand({ compact = false }: { compact?: boolean }) {
@@ -54,10 +55,10 @@ export function PublicHeader() {
         </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <Link
-            href="/blog"
+            href="/contact"
             className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "lg:hidden")}
           >
-            Blog
+            Contact
           </Link>
           <ThemeToggle />
           <Link

@@ -8,7 +8,7 @@
       "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Stablon",
-        "supportEmail": "contact@flowdesk.tech"
+        "supportEmail": "contact@stablon.app"
       }
     }
   }
