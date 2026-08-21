@@ -169,6 +169,18 @@ export default function SettingsPage() {
 
   const verificationTasks = (
     <div className="space-y-2">
+      <div className="rounded-md border border-info/25 bg-info-muted p-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="default">Recommended</Badge>
+          <p className="text-sm font-medium text-foreground">
+            Bridge Persona verification
+          </p>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          Use Bridge&apos;s guided, provider-hosted flow for identity documents and
+          selfie verification.
+        </p>
+      </div>
       <KycTaskRow
         icon={FileText}
         title="Accept Terms of Service"
@@ -197,13 +209,15 @@ export default function SettingsPage() {
 
       <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-muted p-3">
         <div>
-          <p className="text-sm font-medium text-foreground">Verify in-app instead</p>
+          <p className="text-sm font-medium text-foreground">
+            Manual in-app verification
+          </p>
           <p className="text-xs text-muted-foreground">
-            Enter your details directly — quick check or full document verification.
+            Use this fallback only if you cannot complete the hosted Persona flow.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/verify">Verify in-app</Link>
+          <Link href="/verify">View options</Link>
         </Button>
       </div>
     </div>

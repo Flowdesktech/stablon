@@ -10,7 +10,13 @@ import { PageHeader } from "@/components/ui/page";
 import { CountrySelect, Combobox } from "@/components/ui/country-select";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
-import { requestTosLink, submitDirectKyc, useCustomer, useOccupationCodes } from "@/hooks/use-bridge";
+import {
+  requestTosLink,
+  startKYC,
+  submitDirectKyc,
+  useCustomer,
+  useOccupationCodes,
+} from "@/hooks/use-bridge";
 import { kycGaps, hasGaps } from "@/lib/kyc";
 import type { BridgeCustomer, DirectKycMode } from "@/types/bridge";
 import {
@@ -131,6 +137,8 @@ export default function VerifyPage() {
   const idTypeOptions = effectiveMode === "advanced" ? GOV_ID_TYPES : TAX_ID_TYPES;
   const [signedAgreementId, setSignedAgreementId] = useState("");
   const [tosLoading, setTosLoading] = useState(false);
+  const [hostedLoading, setHostedLoading] = useState(false);
+  const [showDirectForm, setShowDirectForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -214,6 +222,27 @@ export default function VerifyPage() {
       });
     } finally {
       setTosLoading(false);
+    }
+  }
+
+  async function handleHostedVerification() {
+    setHostedLoading(true);
+    try {
+      const result = await startKYC();
+      const url =
+        (!result.tos_accepted && result.tos_link
+          ? result.tos_link
+          : result.kyc_link) ||
+        result.kyc_link;
+      if (!url) throw new Error("Bridge did not return a verification link.");
+      window.location.assign(url);
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Couldn't open Bridge verification",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+      setHostedLoading(false);
     }
   }
 
@@ -374,6 +403,91 @@ export default function VerifyPage() {
     );
   }
 
+  if (!showDirectForm) {
+    return (
+      <div className="max-w-2xl space-y-6 animate-fade-in">
+        <PageHeader
+          title="Verify your identity"
+          description="Use Bridge's guided verification flow to unlock eligible financial features."
+        />
+
+        <Card className="border-info/30">
+          <CardHeader>
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-info-muted text-info">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <span className="inline-flex rounded-full bg-info-muted px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-info">
+                  Recommended
+                </span>
+                <CardTitle className="mt-3 text-lg">
+                  Continue with Bridge Persona
+                </CardTitle>
+                <CardDescription className="mt-2 leading-6">
+                  Complete identity checks in Bridge&apos;s provider-hosted Persona
+                  experience instead of entering sensitive verification details into
+                  Stablon&apos;s manual form.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ul className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
+              {[
+                "Guided verification steps",
+                "Secure ID and selfie checks",
+                "Submitted through Bridge's hosted flow",
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-start gap-2">
+                  <CheckCircle2
+                    className="mt-0.5 h-4 w-4 shrink-0 text-success"
+                    aria-hidden="true"
+                  />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => void handleHostedVerification()}
+              disabled={hostedLoading}
+            >
+              {hostedLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Opening Bridge…
+                </>
+              ) : (
+                <>
+                  Continue with Bridge Persona
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="rounded-lg border border-border bg-surface-muted p-4 text-sm">
+          <p className="font-medium text-foreground">Need the manual option?</p>
+          <p className="mt-1 leading-6 text-muted-foreground">
+            The in-app form remains available as a fallback when the hosted flow
+            cannot be completed.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => setShowDirectForm(true)}
+          >
+            Use manual in-app verification
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Top-up: the customer is already on file and only some fields are still
   // outstanding. Render ONLY those sections instead of the whole questionnaire.
   if (isTopUp) {
@@ -382,6 +496,11 @@ export default function VerifyPage() {
         <PageHeader
           title="Finish verifying"
           description="We already have most of your details. Complete the remaining items below."
+          actions={
+            <Button variant="outline" size="sm" onClick={() => setShowDirectForm(false)}>
+              Use Bridge Persona
+            </Button>
+          }
         />
 
         {gaps.taxId && (
@@ -521,7 +640,12 @@ export default function VerifyPage() {
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <PageHeader
         title="Verify your identity"
-        description="Complete the required steps to unlock eligible account features."
+        description="Manual in-app verification. Bridge Persona is recommended for most users."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setShowDirectForm(false)}>
+            Use Bridge Persona
+          </Button>
+        }
       />
 
       {/* Mode selection */}
@@ -728,10 +852,14 @@ export default function VerifyPage() {
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        Prefer the guided flow?{" "}
-        <Link href="/settings" className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          Use hosted verification
-        </Link>
+        Bridge Persona is the recommended verification method.{" "}
+        <button
+          type="button"
+          onClick={() => setShowDirectForm(false)}
+          className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          Return to hosted verification
+        </button>
       </p>
     </div>
   );
