@@ -7,6 +7,7 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 // Initialization is lazy so importing this module never requires credentials
 // (e.g. during `next build` page-data collection).
 let cachedApp: App | null = null;
+let cachedDb: Firestore | null = null;
 
 function getAdminApp(): App {
   if (cachedApp) return cachedApp;
@@ -37,5 +38,9 @@ export function getAdminAuth(): Auth {
 }
 
 export function getAdminDb(): Firestore {
-  return getFirestore(getAdminApp());
+  if (cachedDb) return cachedDb;
+
+  cachedDb = getFirestore(getAdminApp());
+  cachedDb.settings({ ignoreUndefinedProperties: true });
+  return cachedDb;
 }
