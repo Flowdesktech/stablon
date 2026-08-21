@@ -2,13 +2,17 @@
 
 import {
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   updateProfile,
   signOut,
   sendEmailVerification,
+  sendPasswordResetEmail,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword as firebaseUpdatePassword,
+  type User,
   type UserCredential,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
@@ -39,6 +43,27 @@ async function establishSession(idToken: string, totp?: string) {
   });
 }
 
+async function completeSignIn(user: User, totp?: string): Promise<SessionResult> {
+  if (!user.emailVerified) {
+    return { ok: false, code: "EMAIL_UNVERIFIED" };
+  }
+
+  const idToken = await user.getIdToken();
+  const res = await establishSession(idToken, totp);
+  if (res.ok) return { ok: true };
+
+  const data = await res.json().catch(() => ({}));
+  if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
+  if (data.error === "2FA_INVALID") return { ok: false, code: "2FA_INVALID" };
+  if (data.error === "EMAIL_UNVERIFIED") {
+    return { ok: false, code: "EMAIL_UNVERIFIED" };
+  }
+  if (data.error === "ACCOUNT_DISABLED") {
+    return { ok: false, code: "ACCOUNT_DISABLED" };
+  }
+  return { ok: false, code: "ERROR", message: data.error };
+}
+
 export async function signInWithPassword(
   email: string,
   password: string,
@@ -51,22 +76,81 @@ export async function signInWithPassword(
     return { ok: false, code: "INVALID_CREDENTIALS" };
   }
 
-  // Gate on a verified email before we ever mint a session cookie. The Firebase
-  // client stays signed in so the /verify-email page can resend the email.
-  if (!cred.user.emailVerified) {
-    return { ok: false, code: "EMAIL_UNVERIFIED" };
+  return completeSignIn(cred.user, totp);
+}
+
+export async function signInWithGoogle(totp?: string): Promise<SessionResult> {
+  const auth = getFirebaseAuth();
+  let user = totp ? auth.currentUser : null;
+
+  if (!user) {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      const credential = await signInWithPopup(auth, provider);
+      user = credential.user;
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "auth/popup-closed-by-user":
+            return { ok: false, code: "ERROR", message: "Google sign-in was cancelled." };
+          case "auth/popup-blocked":
+            return {
+              ok: false,
+              code: "ERROR",
+              message: "Your browser blocked the Google sign-in window. Allow popups and try again.",
+            };
+          case "auth/account-exists-with-different-credential":
+            return {
+              ok: false,
+              code: "ERROR",
+              message: "An account already exists with this email. Sign in with your password.",
+            };
+          case "auth/unauthorized-domain":
+            return {
+              ok: false,
+              code: "ERROR",
+              message: "Google sign-in is not configured for this domain.",
+            };
+          case "auth/operation-not-allowed":
+            return {
+              ok: false,
+              code: "ERROR",
+              message: "Google sign-in is not enabled for this Firebase project.",
+            };
+        }
+      }
+      return { ok: false, code: "ERROR", message: "Could not sign in with Google." };
+    }
   }
 
-  const idToken = await cred.user.getIdToken();
-  const res = await establishSession(idToken, totp);
-  if (res.ok) return { ok: true };
+  const result = await completeSignIn(user, totp);
+  if (result.ok) {
+    await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: user.displayName ?? "" }),
+    }).catch(() => {});
+  }
+  return result;
+}
 
-  const data = await res.json().catch(() => ({}));
-  if (data.error === "2FA_REQUIRED") return { ok: false, code: "2FA_REQUIRED" };
-  if (data.error === "2FA_INVALID") return { ok: false, code: "2FA_INVALID" };
-  if (data.error === "EMAIL_UNVERIFIED") return { ok: false, code: "EMAIL_UNVERIFIED" };
-  if (data.error === "ACCOUNT_DISABLED") return { ok: false, code: "ACCOUNT_DISABLED" };
-  return { ok: false, code: "ERROR", message: data.error };
+export async function requestPasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+  } catch (error) {
+    if (error instanceof FirebaseError) {
+      if (error.code === "auth/invalid-email") {
+        throw new Error("Enter a valid email address.");
+      }
+      if (error.code === "auth/too-many-requests") {
+        throw new Error("Too many requests. Wait a few minutes and try again.");
+      }
+      // Do not disclose whether an account exists for the supplied email.
+      if (error.code === "auth/user-not-found") return;
+    }
+    throw new Error("Could not send the reset email. Please try again.");
+  }
 }
 
 // Creates the Firebase account and sends a verification email. No session cookie

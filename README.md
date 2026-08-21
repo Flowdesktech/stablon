@@ -12,7 +12,7 @@ jurisdiction, currency, and current provider support.
 
 - Supported USD, EUR, and GBP money accounts and local payment rails
 - Bank and stablecoin deposit, withdrawal, conversion, and transaction workflows
-- Firebase email/password authentication, server sessions, optional TOTP 2FA, and app lock
+- Firebase email/password and Google authentication, password recovery, server sessions, optional TOTP 2FA, and app lock
 - Client records and business invoice profiles
 - Itemized invoices with taxes, discounts, terms, due dates, and 15 exact HTML/CSS templates
 - Matching browser previews and Chromium-generated, one-page A4 PDFs with overflow protection
@@ -40,7 +40,7 @@ rules; application data is accessed through authorized server routes.
 
 - Node.js 20.9 or newer
 - npm
-- Firebase project with Email/Password Authentication and Firestore enabled
+- Firebase project with Email/Password and Google Authentication plus Firestore enabled
 - Bridge API credentials
 - Optional: Resend account for email delivery
 - Optional: NOWPayments credentials if virtual-account setup fees are enabled
@@ -142,15 +142,16 @@ web-app configuration.
 
 ## Firebase setup
 
-1. Enable Email/Password in Firebase Authentication.
+1. Enable Email/Password and Google in Firebase Authentication.
 2. Create a Cloud Firestore database.
 3. Create a web application and copy its public configuration.
 4. Create a service-account key for the Firebase Admin values.
-5. Add local and deployed domains to Authentication → Authorized domains.
+5. Add local and deployed domains to Authentication → Authorized domains. Google popup sign-in
+   fails with `auth/unauthorized-domain` when the current hostname is missing.
 6. Deploy the included rules and indexes:
 
 ```bash
-npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes
+npx -y firebase-tools@latest deploy --only auth,firestore:rules,firestore:indexes
 ```
 
 The rules intentionally deny direct client reads and writes. Do not loosen them

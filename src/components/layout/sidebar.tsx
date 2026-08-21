@@ -81,14 +81,18 @@ function NavigationGroup({
   pathname,
   approved,
   onNavigate,
+  defaultOpen = false,
 }: {
   label: string;
   items: NavigationItem[];
   pathname: string;
   approved: boolean;
   onNavigate: () => void;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(() => groupIsActive(items, pathname));
+  const [open, setOpen] = useState(
+    () => defaultOpen || groupIsActive(items, pathname)
+  );
 
   return (
     <div className="space-y-1">
@@ -198,6 +202,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           pathname={pathname}
           approved={isApproved}
           onNavigate={onNavigate}
+          defaultOpen
         />
         <NavigationGroup
           key={`invoicing-${groupIsActive(invoiceItems, pathname)}`}
@@ -206,6 +211,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           pathname={pathname}
           approved={isApproved}
           onNavigate={onNavigate}
+          defaultOpen
         />
         <NavigationGroup
           key={`account-${groupIsActive(accountItems, pathname)}`}
