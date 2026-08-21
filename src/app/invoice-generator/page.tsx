@@ -90,7 +90,8 @@ export default function InvoiceGeneratorPage() {
           <div className="flex max-w-md items-start gap-2 rounded-md border border-border bg-surface px-3 py-2.5 text-xs leading-5 text-muted-foreground">
             <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <p>
-              This tool creates a PDF only. Nothing is saved, emailed, or connected to payments.
+              Draft details stay in this browser for reload recovery. They are not saved to
+              Stablon servers, emailed, or connected to payments.
             </p>
           </div>
         </div>

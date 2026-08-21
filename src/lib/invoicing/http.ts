@@ -21,6 +21,16 @@ export async function parseJson<T>(request: Request, schema: ZodType<T>): Promis
 }
 
 export function invoicingError(error: unknown): NextResponse {
+  if (
+    error instanceof Error &&
+    "code" in error &&
+    (error as Error & { code?: unknown }).code === "INVOICE_PAGE_OVERFLOW"
+  ) {
+    return NextResponse.json(
+      { error: error.message, code: "INVOICE_PAGE_OVERFLOW" },
+      { status: 422 }
+    );
+  }
   if (error instanceof ZodError) {
     return NextResponse.json(
       { error: error.issues[0]?.message || "Invalid request", issues: error.issues },

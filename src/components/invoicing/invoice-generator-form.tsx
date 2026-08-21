@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, Loader2, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, Download, Loader2, Plus, Trash2 } from "lucide-react";
 import { InvoicePreview } from "@/components/invoicing/invoice-preview";
+import { TemplatePicker } from "@/components/invoicing/template-picker";
+import { TemplatePreviewArtwork } from "@/components/invoicing/template-preview-artwork";
 import { calculateInvoiceTotals } from "@/lib/invoicing/money";
 import { INVOICE_TEMPLATES } from "@/lib/invoicing/templates";
 import type { RenderableInvoice } from "@/lib/invoicing/renderable";
+import type { InvoiceFit } from "@/lib/invoicing/page-fit";
 
 interface PartyForm {
   name: string;
@@ -24,6 +27,31 @@ interface LineForm {
   rate: string;
 }
 
+interface CachedInvoiceDraft {
+  sender: PartyForm;
+  client: PartyForm;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  currency: string;
+  taxRate: string;
+  notes: string;
+  paymentTerms: string;
+  templateId: string;
+  lineItems: LineForm[];
+}
+
+const STORAGE_KEY = "stablon:public-invoice-draft:v1";
+const defaultParty: PartyForm = {
+  name: "",
+  company: "",
+  email: "",
+  street: "",
+  city: "",
+  postalCode: "",
+  country: "United States",
+};
+
 const inputClass =
   "w-full rounded-md border border-border-strong bg-surface px-3 py-2.5 text-sm text-foreground shadow-[var(--shadow-sm)] outline-none transition-colors placeholder:text-muted-foreground focus:border-focus focus:ring-2 focus:ring-focus/20 disabled:cursor-not-allowed disabled:bg-surface-muted";
 
@@ -33,25 +61,40 @@ function isoDate(offsetDays = 0): string {
   return date.toISOString().slice(0, 10);
 }
 
+function cachedParty(value: unknown): PartyForm | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<Record<keyof PartyForm, unknown>>;
+  return {
+    name: typeof candidate.name === "string" ? candidate.name : "",
+    company: typeof candidate.company === "string" ? candidate.company : "",
+    email: typeof candidate.email === "string" ? candidate.email : "",
+    street: typeof candidate.street === "string" ? candidate.street : "",
+    city: typeof candidate.city === "string" ? candidate.city : "",
+    postalCode:
+      typeof candidate.postalCode === "string" ? candidate.postalCode : "",
+    country:
+      typeof candidate.country === "string" && candidate.country.trim()
+        ? candidate.country
+        : "United States",
+  };
+}
+
+function readCachedDraft(): Partial<CachedInvoiceDraft> | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    return value && typeof value === "object"
+      ? (value as Partial<CachedInvoiceDraft>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function InvoiceGeneratorForm() {
-  const [sender, setSender] = useState<PartyForm>({
-    name: "",
-    company: "",
-    email: "",
-    street: "",
-    city: "",
-    postalCode: "",
-    country: "USA",
-  });
-  const [client, setClient] = useState<PartyForm>({
-    name: "",
-    company: "",
-    email: "",
-    street: "",
-    city: "",
-    postalCode: "",
-    country: "USA",
-  });
+  const [sender, setSender] = useState<PartyForm>({ ...defaultParty });
+  const [client, setClient] = useState<PartyForm>({ ...defaultParty });
   const [invoiceNumber, setInvoiceNumber] = useState("INV-00001");
   const [issueDate, setIssueDate] = useState(() => isoDate());
   const [dueDate, setDueDate] = useState(() => isoDate(7));
@@ -65,6 +108,98 @@ export function InvoiceGeneratorForm() {
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [pageFit, setPageFit] = useState<InvoiceFit | null>(null);
+  const [cacheReady, setCacheReady] = useState(false);
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const cached = readCachedDraft();
+
+    queueMicrotask(() => {
+      if (cached) {
+        const cachedSender = cachedParty(cached.sender);
+        const cachedClient = cachedParty(cached.client);
+        if (cachedSender) setSender(cachedSender);
+        if (cachedClient) setClient(cachedClient);
+        if (typeof cached.invoiceNumber === "string") {
+          setInvoiceNumber(cached.invoiceNumber);
+        }
+        if (typeof cached.issueDate === "string") setIssueDate(cached.issueDate);
+        if (typeof cached.dueDate === "string") setDueDate(cached.dueDate);
+        if (typeof cached.currency === "string") setCurrency(cached.currency);
+        if (typeof cached.taxRate === "string") setTaxRate(cached.taxRate);
+        if (typeof cached.notes === "string") setNotes(cached.notes);
+        if (typeof cached.paymentTerms === "string") {
+          setPaymentTerms(cached.paymentTerms);
+        }
+        if (
+          typeof cached.templateId === "string" &&
+          INVOICE_TEMPLATES.some((template) => template.id === cached.templateId)
+        ) {
+          setTemplateId(cached.templateId);
+        }
+        if (Array.isArray(cached.lineItems)) {
+          const cachedItems = cached.lineItems
+            .slice(0, 25)
+            .map((item, index): LineForm | null => {
+              if (!item || typeof item !== "object") return null;
+              return {
+                id:
+                  typeof item.id === "string" && item.id
+                    ? item.id
+                    : `cached-item-${index}`,
+                description:
+                  typeof item.description === "string" ? item.description : "",
+                quantity: typeof item.quantity === "string" ? item.quantity : "1",
+                rate: typeof item.rate === "string" ? item.rate : "0",
+              };
+            })
+            .filter((item): item is LineForm => Boolean(item));
+          if (cachedItems.length) setLineItems(cachedItems);
+        }
+      }
+      setCacheReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!cacheReady) return;
+    const timer = window.setTimeout(() => {
+      const draft: CachedInvoiceDraft = {
+        sender,
+        client,
+        invoiceNumber,
+        issueDate,
+        dueDate,
+        currency,
+        taxRate,
+        notes,
+        paymentTerms,
+        templateId,
+        lineItems,
+      };
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      } catch {
+        // The generator still works when browser storage is unavailable.
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    cacheReady,
+    client,
+    currency,
+    dueDate,
+    invoiceNumber,
+    issueDate,
+    lineItems,
+    notes,
+    paymentTerms,
+    sender,
+    taxRate,
+    templateId,
+  ]);
 
   const preview = useMemo<RenderableInvoice>(() => {
     const safeItems = lineItems.map((item) => ({
@@ -124,6 +259,9 @@ export function InvoiceGeneratorForm() {
     taxRate,
     templateId,
   ]);
+  const selectedTemplate =
+    INVOICE_TEMPLATES.find((template) => template.id === templateId) ||
+    INVOICE_TEMPLATES[0];
 
   function updateParty(
     setter: React.Dispatch<React.SetStateAction<PartyForm>>,
@@ -149,6 +287,16 @@ export function InvoiceGeneratorForm() {
 
   async function downloadPdf(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!pageFit) {
+      setError("Wait for the one-page preview check to finish.");
+      return;
+    }
+    if (!pageFit.fits) {
+      setError(
+        "This invoice is too long for one readable A4 page. Shorten line items or notes before downloading."
+      );
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -219,13 +367,51 @@ export function InvoiceGeneratorForm() {
               <input className={inputClass} type="date" value={dueDate} min={issueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </Field>
             <Field label="Template" wide>
-              <select className={inputClass} value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-                {INVOICE_TEMPLATES.map((template) => (
-                  <option key={template.id} value={template.id} className="bg-surface text-foreground">
-                    {template.name} - {template.description}
-                  </option>
-                ))}
-              </select>
+              <div className="overflow-hidden rounded-lg border border-border-strong bg-surface shadow-[var(--shadow-sm)]">
+                <button
+                  type="button"
+                  aria-expanded={templateMenuOpen}
+                  onClick={() => setTemplateMenuOpen((open) => !open)}
+                  className="flex w-full items-center gap-4 p-3 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                >
+                  <div className="w-24 shrink-0 overflow-hidden rounded-md border border-border bg-white sm:w-28">
+                    <TemplatePreviewArtwork
+                      templateId={selectedTemplate.id}
+                      compact
+                      className="h-24 sm:h-28"
+                    />
+                  </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground">
+                      {selectedTemplate.name}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                      {selectedTemplate.description}
+                    </span>
+                    <span className="mt-2 block text-xs font-medium text-primary">
+                      Choose another template
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      templateMenuOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {templateMenuOpen ? (
+                  <div className="max-h-[32rem] overflow-y-auto border-t border-border bg-surface-muted p-3">
+                    <TemplatePicker
+                      value={templateId}
+                      onChange={(nextTemplateId) => {
+                        setTemplateId(nextTemplateId);
+                        setTemplateMenuOpen(false);
+                      }}
+                      compact
+                    />
+                  </div>
+                ) : null}
+              </div>
             </Field>
           </div>
         </FormSection>
@@ -284,8 +470,12 @@ export function InvoiceGeneratorForm() {
           </div>
         </FormSection>
 
+        <p className="text-xs leading-5 text-muted-foreground">
+          Your invoice draft is saved automatically in this browser and restored when you reload
+          this page.
+        </p>
         {error ? <p role="alert" className="rounded-md border border-danger/25 bg-danger-muted px-4 py-3 text-sm text-danger">{error}</p> : null}
-        <button type="submit" disabled={submitting} aria-busy={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:border-primary-hover hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60">
+        <button type="submit" disabled={submitting || !pageFit?.fits} aria-busy={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:border-primary-hover hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60">
           {submitting ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Download className="h-5 w-5" aria-hidden="true" />}
           {submitting ? "Generating PDF..." : "Download PDF"}
         </button>
@@ -293,7 +483,7 @@ export function InvoiceGeneratorForm() {
 
       <aside className="xl:sticky xl:top-8">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Live preview</p>
-        <InvoicePreview invoice={preview} />
+        <InvoicePreview invoice={preview} onFitChange={setPageFit} />
       </aside>
     </form>
   );
@@ -369,7 +559,7 @@ function PartySection({
           ["street", "Street", "123 Main Street"],
           ["city", "City", "New York"],
           ["postalCode", "Postal code", "10001"],
-          ["country", "Country", "USA"],
+          ["country", "Country", "United States"],
         ] as const).map(([key, label, placeholder]) => (
           <Field key={key} label={label}>
             <input
@@ -379,7 +569,7 @@ function PartySection({
               onChange={(event) => updateParty(setter, key, event.target.value)}
               placeholder={placeholder}
               required={key === "name" || key === "email"}
-              maxLength={key === "email" ? 254 : 160}
+              maxLength={key === "country" ? 100 : key === "email" ? 254 : 160}
             />
           </Field>
         ))}

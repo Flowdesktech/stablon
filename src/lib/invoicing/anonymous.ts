@@ -28,7 +28,7 @@ const addressSchema = z
     city: z.string().trim().max(100).default(""),
     subdivision: z.string().trim().max(100).optional(),
     postalCode: z.string().trim().max(30).default(""),
-    country: z.string().trim().min(2).max(80).default(""),
+    country: z.string().trim().min(2).max(100).default("United States"),
   })
   .strict();
 

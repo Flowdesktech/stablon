@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import { decryptSecret } from "@/lib/crypto";
 import { getInvoice } from "@/lib/invoicing/repository";
-import { renderInvoicePdf } from "@/lib/invoicing/pdf";
+import {
+  isInvoiceContentOverflowError,
+  renderInvoicePdf,
+} from "@/lib/invoicing/pdf";
 import {
   safeInvoiceFilename,
   toRenderableInvoice,
 } from "@/lib/invoicing/renderable";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -43,6 +46,12 @@ export async function GET(request: Request, context: Context) {
       },
     });
   } catch (error) {
+    if (isInvoiceContentOverflowError(error)) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 422 }
+      );
+    }
     if (error instanceof Error && error.message === "Invoice not found") {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }

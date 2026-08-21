@@ -12,11 +12,14 @@ import {
   markInvoiceSent,
   sendInvoiceEmail,
 } from "@/lib/invoicing/delivery";
-import { renderInvoicePdf } from "@/lib/invoicing/pdf";
+import {
+  isInvoiceContentOverflowError,
+  renderInvoicePdf,
+} from "@/lib/invoicing/pdf";
 import { toRenderableInvoice } from "@/lib/invoicing/renderable";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -43,9 +46,14 @@ export async function POST(request: Request, context: Context) {
     }
 
     let publicToken: string;
+    const baseUrl = publicBaseUrl(request);
     if (invoice.publicTokenHash && invoice.publicTokenEncrypted) {
       publicToken = decryptSecret(invoice.publicTokenEncrypted);
     } else {
+      await renderInvoicePdf(
+        toRenderableInvoice(invoice),
+        new URL("/pay/preview", baseUrl).toString()
+      );
       const published = await publishInvoice(guard.user, invoice.id);
       invoice = published.invoice;
       publicToken = published.token;
@@ -53,7 +61,7 @@ export async function POST(request: Request, context: Context) {
 
     const paymentUrl = new URL(
       `/pay/${encodeURIComponent(publicToken)}`,
-      publicBaseUrl(request)
+      baseUrl
     ).toString();
     const pdf = await renderInvoicePdf(toRenderableInvoice(invoice), paymentUrl);
     const deliveryKey = invoiceDeliveryKey(invoice);
@@ -69,6 +77,12 @@ export async function POST(request: Request, context: Context) {
       data: { sent: true, messageId, paymentUrl },
     });
   } catch (error) {
+    if (isInvoiceContentOverflowError(error)) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 422 }
+      );
+    }
     if (error instanceof InvoiceEmailConfigurationError) {
       console.error("[invoicing/invoices/send] Email configuration is incomplete");
       return NextResponse.json({ error: "Invoice email is not configured" }, { status: 503 });

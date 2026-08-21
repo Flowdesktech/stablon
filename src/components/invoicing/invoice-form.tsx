@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays } from "date-fns";
-import { ArrowLeft, Eye, FileCheck2 } from "lucide-react";
+import { ArrowLeft, Edit3, Eye, FileCheck2, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,7 @@ import {
 } from "@/components/invoicing/line-item-editor";
 import { TemplatePicker } from "@/components/invoicing/template-picker";
 import { InvoicePreview } from "@/components/invoicing/invoice-preview";
+import { ClientDialog } from "@/components/invoicing/client-dialog";
 import {
   invoicingRequest,
   jsonBody,
@@ -44,6 +45,7 @@ import type {
   InvoiceTotals,
 } from "@/types/invoicing";
 import type { RenderableInvoice } from "@/lib/invoicing/renderable";
+import type { InvoiceFit } from "@/lib/invoicing/page-fit";
 
 function dateValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -60,7 +62,7 @@ export function InvoiceForm({
   const editing = Boolean(invoice);
   const { data: profiles, error: profilesError, isLoading: profilesLoading } =
     useInvoicingData<InvoiceProfile[]>("/api/invoicing/profiles", ["profiles"]);
-  const { data: clients, error: clientsError, isLoading: clientsLoading } =
+  const { data: clients, error: clientsError, isLoading: clientsLoading, mutate: mutateClients } =
     useInvoicingData<InvoiceClient[]>("/api/invoicing/clients", ["clients"]);
 
   const [profileId, setProfileId] = useState(invoice?.profileId || "");
@@ -94,6 +96,9 @@ export function InvoiceForm({
   );
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [pageFit, setPageFit] = useState<InvoiceFit | null>(null);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientDialogClient, setClientDialogClient] = useState<InvoiceClient | null>(null);
 
   const selectedProfile = profiles?.find((profile) => profile.id === profileId);
   const selectedClient = clients?.find((client) => client.id === clientId);
@@ -239,6 +244,24 @@ export function InvoiceForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!pageFit) {
+      toast({
+        variant: "info",
+        title: "Checking invoice layout",
+        description: "Wait for the one-page preview check to finish, then save again.",
+      });
+      return;
+    }
+    if (!pageFit.fits) {
+      toast({
+        variant: "error",
+        title: "Invoice is too long",
+        description:
+          "Shorten line-item descriptions, remove items, or reduce the notes so it fits on one readable A4 page.",
+      });
+      setPreviewOpen(true);
+      return;
+    }
     if (!profileId || !clientId) {
       toast({
         variant: "error",
@@ -330,7 +353,7 @@ export function InvoiceForm({
               <Eye className="h-4 w-4" />
               Preview
             </Button>
-            <SubmitButton pending={saving}>
+            <SubmitButton pending={saving} disabled={!pageFit?.fits}>
               <FileCheck2 className="h-4 w-4" />
               {editing ? "Save changes" : "Save draft"}
             </SubmitButton>
@@ -372,12 +395,65 @@ export function InvoiceForm({
                     </option>
                   ))}
                 </select>
-                {!filteredClients.length && (
-                  <Link href="/clients" className="block text-xs text-primary hover:underline">
-                    Add a client to this profile
-                  </Link>
-                )}
               </Field>
+              <div className="rounded-md border border-border bg-surface-muted p-4 sm:col-span-2">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1 text-sm">
+                    {selectedClient ? (
+                      <>
+                        <p className="font-medium text-foreground">
+                          {selectedClient.name}
+                          {selectedClient.company ? ` · ${selectedClient.company}` : ""}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {[selectedClient.email, selectedClient.phone].filter(Boolean).join(" · ")}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {[
+                            selectedClient.address.street,
+                            selectedClient.address.street2,
+                            selectedClient.address.city,
+                            selectedClient.address.subdivision,
+                            selectedClient.address.postalCode,
+                            selectedClient.address.country,
+                          ].filter(Boolean).join(", ") || "No billing address"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Select a client to review their contact and billing address.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!profileId}
+                      onClick={() => {
+                        setClientDialogClient(null);
+                        setClientDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" /> Add client
+                    </Button>
+                    {selectedClient && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setClientDialogClient(selectedClient);
+                          setClientDialogOpen(true);
+                        }}
+                      >
+                        <Edit3 className="h-4 w-4" /> Edit client
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <Field label="Issue date">
                 <Input
                   type="date"
@@ -510,6 +586,16 @@ export function InvoiceForm({
               <p className="pt-2 text-xs text-muted-foreground">
                 The server validates and recalculates all monetary values when saved.
               </p>
+              {!pageFit ? (
+                <p className="text-xs text-muted-foreground">Checking one-page A4 fit…</p>
+              ) : !pageFit.fits ? (
+                <p role="alert" className="text-xs leading-5 text-danger">
+                  This invoice is too long for one readable page. Preview it and shorten the
+                  line items or notes before saving.
+                </p>
+              ) : (
+                <p className="text-xs text-success">Fits on one A4 page.</p>
+              )}
             </CardContent>
           </Card>
         </aside>
@@ -536,6 +622,28 @@ export function InvoiceForm({
           </div>
         </DialogContent>
       </Dialog>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-[-10000px] top-0 w-[794px] opacity-0"
+      >
+        <InvoicePreview
+          invoice={previewInvoice}
+          paymentUrl="https://stablon.app/pay/preview"
+          onFitChange={setPageFit}
+        />
+      </div>
+      <ClientDialog
+        open={clientDialogOpen}
+        onOpenChange={setClientDialogOpen}
+        client={clientDialogClient}
+        profiles={profiles}
+        initialProfileId={profileId}
+        lockProfile
+        onSaved={async (savedClient) => {
+          await mutateClients();
+          setClientId(savedClient.id);
+        }}
+      />
     </form>
   );
 }

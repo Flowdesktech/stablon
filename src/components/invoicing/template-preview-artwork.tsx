@@ -1,42 +1,42 @@
-import { InvoicePreview } from "@/components/invoicing/invoice-preview";
-import { sampleRenderableInvoice } from "@/lib/invoicing/sample";
+import Image from "next/image";
 import { getInvoiceTemplate } from "@/lib/invoicing/templates";
 import { cn } from "@/lib/utils";
 
 export function TemplatePreviewArtwork({
   templateId,
   compact = false,
+  full = false,
+  className,
 }: {
   templateId: string;
   compact?: boolean;
+  full?: boolean;
+  className?: string;
 }) {
   const template = getInvoiceTemplate(templateId);
-  const invoice = sampleRenderableInvoice(template.id);
-  const scale = compact ? 0.18 : 0.3;
 
   return (
     <div
       className={cn(
-        "relative flex w-full justify-center overflow-hidden",
-        compact ? "h-36" : "h-56"
+        "relative w-full overflow-hidden bg-white",
+        full ? "aspect-[3/4]" : compact ? "h-36" : "h-56",
+        className
       )}
       style={{ backgroundColor: template.surface }}
       aria-hidden="true"
     >
-      <div
-        className="pointer-events-none absolute left-1/2 top-3 w-[720px] shrink-0"
-        style={{
-          transform: `translateX(-50%) scale(${scale})`,
-          transformOrigin: "top center",
-        }}
-      >
-        <InvoicePreview invoice={invoice} />
-      </div>
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-12"
-        style={{
-          background: `linear-gradient(to bottom, transparent, ${template.surface})`,
-        }}
+      <Image
+        src={`/template-previews/${template.id}-${full ? "full" : "preview"}.png`}
+        alt=""
+        fill
+        sizes={
+          full
+            ? "(max-width: 768px) 92vw, 768px"
+            : compact
+              ? "(max-width: 640px) 45vw, 220px"
+              : "(max-width: 1024px) 45vw, 360px"
+        }
+        className={full ? "object-contain" : "object-cover object-top"}
       />
     </div>
   );

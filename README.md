@@ -14,7 +14,8 @@ jurisdiction, currency, and current provider support.
 - Bank and stablecoin deposit, withdrawal, conversion, and transaction workflows
 - Firebase email/password authentication, server sessions, optional TOTP 2FA, and app lock
 - Client records and business invoice profiles
-- Itemized invoices with taxes, discounts, terms, due dates, and 15 PDF designs
+- Itemized invoices with taxes, discounts, terms, due dates, and 15 exact HTML/CSS templates
+- Matching browser previews and Chromium-generated, one-page A4 PDFs with overflow protection
 - Resend email delivery with PDF attachments and secure public invoice links
 - Weekly, biweekly, monthly, quarterly, and yearly recurring invoice schedules
 - Bridge-powered invoice checkout and verified webhook reconciliation
@@ -27,7 +28,7 @@ jurisdiction, currency, and current provider support.
 - Firebase Authentication and Cloud Firestore
 - Firebase Admin SDK for all server-side data access
 - Bridge REST API for customers, verification, accounts, transfers, cards, and settlement
-- `@react-pdf/renderer` for server-side PDF generation
+- Handlebars HTML templates with serverless Chromium for matching browser previews and PDFs
 - Resend for contact and invoice email
 - Vercel Cron for recurring invoice generation
 

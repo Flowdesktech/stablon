@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 9pt;
+      line-height: 1.4;
+      color: #1e293b;
+      background: #ffffff;
+    }
+
+    .invoice-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+    }
+
+    /* Compact professional header */
+    .header {
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      color: white;
+      padding: 20px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 60%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.05);
+      transform: rotate(35deg);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .company-info h1 {
+      font-size: 16pt;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .company-info p {
+      font-size: 8pt;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.3;
+    }
+
+    .invoice-info {
+      text-align: right;
+    }
+
+    .invoice-title {
+      font-size: 8pt;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .invoice-number {
+      font-size: 14pt;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 8px;
+    }
+
+    .invoice-meta {
+      font-size: 8pt;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.3;
+    }
+
+    .invoice-meta-row {
+      display: flex;
+      gap: 15px;
+      justify-content: flex-end;
+    }
+
+    .invoice-meta-item {
+      text-align: right;
+    }
+
+    .invoice-meta-label {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .invoice-meta-value {
+      color: white;
+      font-weight: 500;
+    }
+
+    /* Main content area */
+    .main-content {
+      padding: 20px 30px;
+    }
+
+    /* Compact billing section */
+    .billing-section {
+      margin-bottom: 15px;
+      border-left: 3px solid #3b82f6;
+      padding-left: 15px;
+    }
+
+    .billing-header {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .billing-info {
+      font-size: 8pt;
+      color: #475569;
+      line-height: 1.3;
+    }
+
+    .billing-info strong {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    /* Modern blue table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+      background: white;
+      border: 1px solid #e0f2fe;
+    }
+
+    .items-table th {
+      background: #f8fafc;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #3b82f6;
+    }
+
+    .items-table td {
+      padding: 8px 10px;
+      font-size: 8pt;
+      color: #334155;
+      border-bottom: 1px solid #e0f2fe;
+    }
+
+    .items-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    /* Compact totals */
+    .totals-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 15px;
+    }
+
+    .totals-box {
+      width: 300px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 8pt;
+      border-bottom: 1px solid #e0f2fe;
+    }
+
+    .total-row:last-child {
+      border-bottom: none;
+      border-top: 2px solid #3b82f6;
+      margin-top: 8px;
+      padding-top: 8px;
+      font-size: 11pt;
+      font-weight: 700;
+    }
+
+    .total-label {
+      color: #64748b;
+    }
+
+    .total-value {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .total-row:last-child .total-label,
+    .total-row:last-child .total-value {
+      color: #2563eb;
+    }
+
+    /* Footer positioned at bottom */
+    .footer {
+      margin-top: 60px;
+      padding: 20px 30px;
+      background: #f8fafc;
+      border-top: 1px solid #e0f2fe;
+    }
+
+    .footer-content {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 30px;
+    }
+
+    .notes-section h3 {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .notes-section p {
+      font-size: 8pt;
+      color: #475569;
+      line-height: 1.3;
+    }
+
+    .payment-terms-box {
+      background: #f0f9ff;
+      padding: 10px;
+      border-left: 3px solid #3b82f6;
+      text-align: left;
+    }
+
+    .payment-terms-box h4 {
+      font-size: 8pt;
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .payment-terms-box p {
+      font-size: 9pt;
+      font-weight: 500;
+      color: #1e293b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="invoice-container">
+    <!-- Blue Gradient Header -->
+    <div class="header">
+      <div class="header-content">
+        <div class="company-info">
+          <h1>{{senderDisplayName}}</h1>
+          <p>
+            {{#if senderAddressStreet}}{{senderAddressStreet}}<br>{{/if}}
+            {{#if senderAddressCityStateZip}}{{senderAddressCityStateZip}}<br>{{/if}}
+            {{#if senderAddressCountry}}{{senderAddressCountry}}<br>{{/if}}
+            {{#if senderEmail}}{{senderEmail}}<br>{{/if}}
+            {{#if senderPhone}}{{senderPhone}}{{/if}}
+          </p>
+        </div>
+
+        <div class="invoice-info">
+          <div class="invoice-title">INVOICE</div>
+          <div class="invoice-number">{{invoice.invoiceNumber}}</div>
+          <div class="invoice-meta">
+            <div class="invoice-meta-row">
+              <div class="invoice-meta-item">
+                <div class="invoice-meta-label">Date Issued</div>
+                <div class="invoice-meta-value">{{formatDate invoice.date timezone=userData.timezone}}</div>
+              </div>
+              <div class="invoice-meta-item">
+                <div class="invoice-meta-label">Due Date</div>
+                <div class="invoice-meta-value">{{formatDate invoice.dueDate timezone=userData.timezone}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Blue-Accented Billing Section -->
+      <div class="billing-section">
+        <h2 class="billing-header">Bill To</h2>
+        <div class="billing-info">
+          <strong>{{customer.name}}</strong><br>
+          {{#if customer.email}}{{customer.email}}<br>{{/if}}
+          {{#if customer.phone}}{{customer.phone}}<br>{{/if}}
+          {{#if customerAddressStreet}}{{customerAddressStreet}}<br>{{/if}}
+          {{#if customerAddressCityStateZip}}{{customerAddressCityStateZip}}<br>{{/if}}
+          {{#if customerAddressCountry}}{{customerAddressCountry}}{{/if}}
+        </div>
+      </div>
+
+      <!-- Modern Blue Table -->
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 50%">Description</th>
+            <th class="text-center" style="width: 15%">Quantity</th>
+            <th class="text-right" style="width: 15%">Rate</th>
+            <th class="text-right" style="width: 20%">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each invoice.lineItems}}
+          <tr>
+            <td>{{this.description}}</td>
+            <td class="text-center">{{this.quantity}}</td>
+            <td class="text-right">{{formatCurrency this.rate currency=../invoice.currency}}</td>
+            <td class="text-right">{{formatCurrency this.amount currency=../invoice.currency}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- Blue Gradient Totals -->
+      <div class="totals-section">
+        <div class="totals-box">
+          <div class="total-row">
+            <div class="total-label">Subtotal</div>
+            <div class="total-value">{{formatCurrency invoice.subtotal currency=invoice.currency}}</div>
+          </div>
+          {{#if invoice.taxRate}}
+          <div class="total-row">
+            <div class="total-label">Tax ({{invoice.taxRate}}%)</div>
+            <div class="total-value">{{formatCurrency invoice.taxAmount currency=invoice.currency}}</div>
+          </div>
+          {{/if}}
+          <div class="total-row">
+            <div class="total-label">Total Due</div>
+            <div class="total-value">{{formatCurrency invoice.total currency=invoice.currency}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blue-Themed Footer -->
+    <div class="footer">
+      <div class="footer-content">
+        {{#if invoice.notes}}
+        <div class="notes-section">
+          <h3>Notes</h3>
+          <p>{{{nl2br invoice.notes}}}</p>
+        </div>
+        {{/if}}
+
+        <div class="payment-terms-box">
+          <h4>Payment Terms</h4>
+          <p>{{invoice.paymentTerms}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

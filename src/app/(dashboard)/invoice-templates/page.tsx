@@ -13,10 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeading } from "@/components/invoicing/invoice-ui";
-import { InvoicePreview } from "@/components/invoicing/invoice-preview";
+import { TemplatePreviewArtwork } from "@/components/invoicing/template-preview-artwork";
 import { TemplatePicker } from "@/components/invoicing/template-picker";
 import { getInvoiceTemplate } from "@/lib/invoicing/templates";
-import { sampleRenderableInvoice } from "@/lib/invoicing/sample";
 
 export default function InvoiceTemplatesPage() {
   const [selected, setSelected] = useState("modern-blue");
@@ -63,8 +62,8 @@ export default function InvoiceTemplatesPage() {
                 <DialogTitle>{previewTemplate.name}</DialogTitle>
                 <DialogDescription>{previewTemplate.description}</DialogDescription>
               </DialogHeader>
-              <div className="mx-auto max-w-[50rem] rounded-lg border border-border bg-surface-muted p-3 sm:p-6">
-                <InvoicePreview invoice={sampleRenderableInvoice(previewTemplate.id)} />
+              <div className="mx-auto w-full max-w-[48rem] overflow-hidden rounded-lg border border-border bg-surface-muted">
+                <TemplatePreviewArtwork templateId={previewTemplate.id} full />
               </div>
               <div className="flex flex-wrap justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setPreviewId(null)}>

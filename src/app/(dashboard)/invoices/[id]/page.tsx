@@ -130,6 +130,41 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  async function downloadPdf() {
+    if (!invoice) return;
+    setAction("download");
+    try {
+      const response = await fetch(
+        `/api/invoicing/invoices/${encodeURIComponent(id)}/pdf`
+      );
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error || `PDF download failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${invoice.formattedNumber.replace(/[^A-Za-z0-9_-]+/g, "-") || "invoice"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      toast({
+        variant: "error",
+        title: "Invoice PDF not downloaded",
+        description:
+          downloadError instanceof Error ? downloadError.message : "Please try again.",
+      });
+    } finally {
+      setAction(null);
+    }
+  }
+
   if (isLoading) return <LoadingState rows={6} />;
   if (error || !invoice) {
     return <ErrorState message={error?.message || "Invoice not found."} onRetry={() => mutate()} />;
@@ -193,11 +228,14 @@ export default function InvoiceDetailPage() {
           >
             <Copy className="h-4 w-4" /> Duplicate
           </Button>
-          <Button asChild variant="outline">
-            <a href={`/api/invoicing/invoices/${encodeURIComponent(id)}/pdf`}>
-              <Download className="h-4 w-4" /> Download PDF
-            </a>
-          </Button>
+          <SubmitButton
+            type="button"
+            variant="outline"
+            pending={action === "download"}
+            onClick={() => void downloadPdf()}
+          >
+            <Download className="h-4 w-4" /> Download PDF
+          </SubmitButton>
           {canVoid && (
             <SubmitButton
               pending={action === "void"}

@@ -544,6 +544,10 @@ async function deliverRecurringInvoice(invoice: Invoice): Promise<void> {
   if (!user) throw new Error("Recurring invoice owner not found");
 
   try {
+    await renderInvoicePdf(
+      toRenderableInvoice(invoice),
+      `${recurringPublicBaseUrl()}/pay/preview`
+    );
     const published = await publishInvoice(user, invoice.id);
     const paymentUrl = `${recurringPublicBaseUrl()}/pay/${encodeURIComponent(
       published.token

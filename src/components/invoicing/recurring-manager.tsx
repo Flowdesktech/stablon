@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { invoicingRequest, jsonBody, useInvoicingData } from "@/components/invoicing/api";
+import { InvoicePreview } from "@/components/invoicing/invoice-preview";
 import {
   ConfirmationDialog,
   EmptyState,
@@ -45,6 +46,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { calculateInvoiceTotals } from "@/lib/invoicing/money";
+import type { InvoiceFit } from "@/lib/invoicing/page-fit";
+import type { RenderableInvoice } from "@/lib/invoicing/renderable";
 import type {
   Invoice,
   InvoiceClient,
@@ -167,6 +171,7 @@ export function RecurringManager() {
   const [history, setHistory] = useState<Record<string, Invoice[]>>({});
   const [historyLoading, setHistoryLoading] = useState<string | null>(null);
   const [stopTarget, setStopTarget] = useState<RecurringInvoice | null>(null);
+  const [pageFit, setPageFit] = useState<InvoiceFit | null>(null);
 
   useEffect(() => {
     if (!form.profileId && profiles?.length) {
@@ -187,17 +192,88 @@ export function RecurringManager() {
     () => new Map((clients || []).map((client) => [client.id, client.name])),
     [clients]
   );
+  const selectedProfile = profiles?.find((profile) => profile.id === form.profileId);
+  const selectedClient = clients?.find((client) => client.id === form.clientId);
+  const previewInvoice = useMemo<RenderableInvoice | null>(() => {
+    if (!selectedProfile || !selectedClient) return null;
+    const lineItems = form.lineItems.map((item, index) => ({
+      id: item.id || `recurring-preview-${index}`,
+      description: item.description.trim() || "Service or product",
+      quantity:
+        Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0
+          ? item.quantity
+          : "1",
+      rate:
+        Number.isFinite(Number(item.rate)) && Number(item.rate) >= 0
+          ? item.rate
+          : "0",
+    }));
+    const taxRate =
+      Number.isFinite(Number(form.taxRate)) &&
+      Number(form.taxRate) >= 0 &&
+      Number(form.taxRate) <= 100
+        ? form.taxRate
+        : "0";
+    const safeDiscountValue =
+      Number.isFinite(Number(form.discountValue)) && Number(form.discountValue) >= 0
+        ? form.discountValue
+        : "0";
+    const discountValue =
+      form.discountType === "percent"
+        ? String(Math.min(Number(safeDiscountValue), 100))
+        : safeDiscountValue;
+    const computed = calculateInvoiceTotals(
+      lineItems,
+      form.currency || "USD",
+      taxRate,
+      form.discountType,
+      discountValue
+    );
+    const dueDate = new Date(`${form.startDate || today()}T12:00:00Z`);
+    dueDate.setUTCDate(dueDate.getUTCDate() + form.dueDateDuration);
+
+    return {
+      formattedNumber: `${selectedProfile.settings.prefix}-PREVIEW`,
+      issueDate: form.startDate || today(),
+      dueDate: dueDate.toISOString().slice(0, 10),
+      currency: form.currency || "USD",
+      lineItems: computed.lineItems,
+      totals: computed.totals,
+      notes: form.notes,
+      paymentTerms: form.paymentTerms,
+      templateId: form.templateId,
+      sender: {
+        profileId: selectedProfile.id,
+        displayName: selectedProfile.displayName,
+        company: selectedProfile.company,
+        email: selectedProfile.email,
+        phone: selectedProfile.phone,
+        address: selectedProfile.address,
+        logoUrl: selectedProfile.logoUrl,
+      },
+      client: {
+        clientId: selectedClient.id,
+        name: selectedClient.name,
+        company: selectedClient.company,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        address: selectedClient.address,
+      },
+    };
+  }, [form, selectedClient, selectedProfile]);
 
   function startCreate() {
     const profile = profiles?.find((item) => item.isDefault) || profiles?.[0];
     setEditingId(null);
     setForm(emptyForm(profile));
+    setPageFit(null);
     setShowForm(true);
   }
 
   function startEdit(schedule: RecurringInvoice) {
     setEditingId(schedule.id);
     setForm(scheduleForm(schedule));
+    setPageFit(null);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -219,6 +295,16 @@ export function RecurringManager() {
 
   async function saveSchedule(event: React.FormEvent) {
     event.preventDefault();
+    if (!pageFit?.fits) {
+      toast({
+        variant: "error",
+        title: pageFit ? "Recurring invoice is too long" : "Checking invoice layout",
+        description: pageFit
+          ? "Shorten the line items or notes so every generated invoice fits on one readable A4 page."
+          : "Wait for the one-page preview check to finish.",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -587,6 +673,21 @@ export function RecurringManager() {
                 </span>
               </label>
 
+              {!previewInvoice ? (
+                <p className="text-xs text-muted-foreground">
+                  Select a profile and client to check one-page A4 fit.
+                </p>
+              ) : !pageFit ? (
+                <p className="text-xs text-muted-foreground">Checking one-page A4 fit…</p>
+              ) : !pageFit.fits ? (
+                <p role="alert" className="text-xs leading-5 text-danger">
+                  This recurring invoice is too long for one readable A4 page. Shorten the line
+                  items or notes before saving.
+                </p>
+              ) : (
+                <p className="text-xs text-success">Generated invoices fit on one A4 page.</p>
+              )}
+
               <div className="flex justify-end gap-3">
                 <Button
                   type="button"
@@ -595,10 +696,22 @@ export function RecurringManager() {
                 >
                   Cancel
                 </Button>
-                <SubmitButton pending={saving} type="submit">
+                <SubmitButton pending={saving} disabled={!pageFit?.fits} type="submit">
                   {editingId ? "Save changes" : "Create schedule"}
                 </SubmitButton>
               </div>
+              {previewInvoice ? (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none fixed left-[-10000px] top-0 w-[794px] opacity-0"
+                >
+                  <InvoicePreview
+                    invoice={previewInvoice}
+                    paymentUrl="https://stablon.app/pay/preview"
+                    onFitChange={setPageFit}
+                  />
+                </div>
+              ) : null}
             </form>
           </CardContent>
         </Card>

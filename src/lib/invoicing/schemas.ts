@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { INVOICE_TEMPLATES } from "@/lib/invoicing/templates";
 
-const countryCode = z
-  .string()
-  .trim()
-  .length(3)
-  .transform((value) => value.toUpperCase());
+const countryName = z.string().trim().min(2).max(100);
 
 const templateIdSchema = z
   .string()
@@ -23,7 +19,7 @@ export const invoiceAddressSchema = z.object({
   city: z.string().trim().max(100).default(""),
   subdivision: z.string().trim().max(100).optional(),
   postalCode: z.string().trim().max(30).default(""),
-  country: countryCode.default("USA"),
+  country: countryName.default("United States"),
 });
 
 export const invoiceSettingsSchema = z.object({

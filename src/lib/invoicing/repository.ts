@@ -93,7 +93,7 @@ export async function ensureDefaultInvoiceProfile(user: UserDoc): Promise<Invoic
       street: "",
       city: "",
       postalCode: "",
-      country: "USA",
+      country: "United States",
     },
     isDefault: true,
     settings: {

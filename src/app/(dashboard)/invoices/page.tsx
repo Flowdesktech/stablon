@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, FilePlus2, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Copy, Edit3, FilePlus2, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataState, DataToolbar, DataView } from "@/components/ui/data-view";
 import { Input } from "@/components/ui/input";
@@ -15,15 +16,17 @@ import {
   InvoiceStatusBadge,
   LoadingState,
   PageHeading,
+  SubmitButton,
   formatInvoiceMoney,
 } from "@/components/invoicing/invoice-ui";
 import { Select } from "@/components/ui/field";
-import { invoicingRequest, useInvoicingData } from "@/components/invoicing/api";
+import { invoicingRequest, jsonBody, useInvoicingData } from "@/components/invoicing/api";
 import type { Invoice, InvoiceStatus } from "@/types/invoicing";
 
 type Filter = "all" | InvoiceStatus;
 
 export default function InvoicesPage() {
+  const router = useRouter();
   const { data: invoices, error, isLoading, mutate } = useInvoicingData<Invoice[]>(
     "/api/invoicing/invoices",
     ["invoices"]
@@ -31,6 +34,7 @@ export default function InvoicesPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
 
   const filtered = useMemo(() => {
@@ -66,6 +70,33 @@ export default function InvoicesPage() {
       });
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function duplicateInvoice(invoice: Invoice) {
+    setDuplicating(invoice.id);
+    toast({
+      variant: "info",
+      title: "Duplicating invoice",
+      description: `${invoice.formattedNumber} is being copied into a new draft.`,
+      duration: 1800,
+    });
+    try {
+      const copy = await invoicingRequest<Invoice>(
+        `/api/invoicing/invoices/${encodeURIComponent(invoice.id)}`,
+        { method: "PATCH", ...jsonBody({ action: "duplicate" }) }
+      );
+      await mutate();
+      toast({ variant: "success", title: "Invoice duplicated" });
+      router.push(`/invoices/${copy.id}/edit`);
+    } catch (duplicateError) {
+      toast({
+        variant: "error",
+        title: "Invoice not duplicated",
+        description: duplicateError instanceof Error ? duplicateError.message : "Please try again.",
+      });
+    } finally {
+      setDuplicating(null);
     }
   }
 
@@ -129,22 +160,61 @@ export default function InvoicesPage() {
                     {" · "}Due {new Date(`${invoice.dueDate}T00:00:00`).toLocaleDateString()}
                   </p>
                 </Link>
-                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
                   <p className="mr-2 font-semibold tabular-nums text-foreground">
                     {formatInvoiceMoney(invoice.totals.total, invoice.currency)}
                   </p>
-                  {invoice.status === "draft" && (
+                  {invoice.status === "draft" ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={`/invoices/${invoice.id}/edit`}
+                        aria-label={`Edit ${invoice.formattedNumber}`}
+                      >
+                        <Edit3 className="h-4 w-4" /> Edit
+                      </Link>
+                    </Button>
+                  ) : (
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={deleting === invoice.id}
-                      onClick={() => setDeleteTarget(invoice)}
-                      aria-label={`Delete ${invoice.formattedNumber}`}
-                      className="text-muted-foreground hover:text-danger"
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      title="Published invoices cannot be edited. Duplicate it to create a revised draft."
+                      aria-label={`Edit ${invoice.formattedNumber} unavailable after publishing`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Edit3 className="h-4 w-4" /> Edit
                     </Button>
                   )}
+                  <SubmitButton
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    pending={duplicating === invoice.id}
+                    disabled={Boolean(duplicating)}
+                    onClick={() => void duplicateInvoice(invoice)}
+                  >
+                    <Copy className="h-4 w-4" /> Duplicate
+                  </SubmitButton>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={invoice.status !== "draft" || deleting === invoice.id}
+                    onClick={() => setDeleteTarget(invoice)}
+                    title={
+                      invoice.status === "draft"
+                        ? "Delete draft"
+                        : "Published invoices cannot be deleted"
+                    }
+                    aria-label={
+                      invoice.status === "draft"
+                        ? `Delete ${invoice.formattedNumber}`
+                        : `Delete ${invoice.formattedNumber} unavailable after publishing`
+                    }
+                    className="text-muted-foreground hover:border-danger/40 hover:text-danger"
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
                   <Button asChild variant="ghost" size="icon">
                     <Link href={`/invoices/${invoice.id}`} aria-label={`View ${invoice.formattedNumber}`}>
                       <ArrowRight className="h-4 w-4" />

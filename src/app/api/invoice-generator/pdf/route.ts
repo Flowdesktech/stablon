@@ -5,11 +5,14 @@ import {
 } from "@/lib/invoicing/anonymous";
 import { consumeAnonymousPdfLimit } from "@/lib/invoicing/anonymous-rate-limit";
 import { assertSameOrigin } from "@/lib/invoicing/http";
-import { renderInvoicePdf } from "@/lib/invoicing/pdf";
+import {
+  isInvoiceContentOverflowError,
+  renderInvoicePdf,
+} from "@/lib/invoicing/pdf";
 import { safeInvoiceFilename } from "@/lib/invoicing/renderable";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -90,6 +93,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (isInvoiceContentOverflowError(error)) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 422 }
+      );
+    }
     if (error instanceof PayloadTooLargeError) {
       return NextResponse.json(
         { error: `Request body must be ${MAX_BODY_BYTES / 1024} KB or smaller` },

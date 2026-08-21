@@ -29,7 +29,7 @@ const EMPTY_PROFILE: Omit<InvoiceProfile, "id" | "ownerUid" | "createdAt" | "upd
   displayName: "",
   email: "",
   phone: "",
-  address: { street: "", street2: "", city: "", subdivision: "", postalCode: "", country: "USA" },
+  address: { street: "", street2: "", city: "", subdivision: "", postalCode: "", country: "United States" },
   logoUrl: "",
   isDefault: false,
   settings: {
@@ -207,7 +207,7 @@ export default function InvoicingSettingsPage() {
             <Field label="City"><Input value={draft.address.city} onChange={(event) => setDraft({ ...draft, address: { ...draft.address, city: event.target.value } })} /></Field>
             <Field label="State / region"><Input value={draft.address.subdivision || ""} onChange={(event) => setDraft({ ...draft, address: { ...draft.address, subdivision: event.target.value } })} /></Field>
             <Field label="Postal code"><Input value={draft.address.postalCode} onChange={(event) => setDraft({ ...draft, address: { ...draft.address, postalCode: event.target.value } })} /></Field>
-            <Field label="Country code"><Input required minLength={3} maxLength={3} value={draft.address.country} onChange={(event) => setDraft({ ...draft, address: { ...draft.address, country: event.target.value.toUpperCase() } })} /></Field>
+            <Field label="Country"><Input required minLength={2} maxLength={100} placeholder="United States" value={draft.address.country} onChange={(event) => setDraft({ ...draft, address: { ...draft.address, country: event.target.value } })} /></Field>
             <label className="flex items-center gap-2 text-sm text-foreground sm:col-span-2">
               <input type="checkbox" checked={draft.isDefault} onChange={(event) => setDraft({ ...draft, isDefault: event.target.checked })} className="h-4 w-4 accent-primary" />
               Use this as my default invoice profile

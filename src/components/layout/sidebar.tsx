@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
   ArrowUpFromLine,
   CalendarClock,
+  ChevronDown,
   CreditCard,
   Files,
   Landmark,
@@ -67,6 +69,12 @@ const adminItems: NavigationItem[] = [
   { href: "/admin/transactions", label: "Transactions", icon: ReceiptText },
 ];
 
+function groupIsActive(items: NavigationItem[], pathname: string): boolean {
+  return items.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  );
+}
+
 function NavigationGroup({
   label,
   items,
@@ -80,38 +88,56 @@ function NavigationGroup({
   approved: boolean;
   onNavigate: () => void;
 }) {
+  const [open, setOpen] = useState(() => groupIsActive(items, pathname));
+
   return (
     <div className="space-y-1">
-      <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const locked = !approved && isGatedPath(item.href);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            aria-disabled={locked}
-            title={locked ? "Complete identity verification to unlock" : undefined}
-            className={cn(
-              "flex min-h-9 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-              active
-                ? "bg-info-muted font-medium text-info"
-                : locked
-                  ? "text-muted-foreground/60 hover:bg-surface-subtle"
-                  : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground"
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : null}
-          </Link>
-        );
-      })}
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between rounded-md px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <span>{label}</span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          aria-hidden="true"
+        />
+      </button>
+      {open ? (
+        <div className="space-y-1">
+          {items.map((item) => {
+            const active =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const locked = !approved && isGatedPath(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                aria-disabled={locked}
+                title={locked ? "Complete identity verification to unlock" : undefined}
+                className={cn(
+                  "flex min-h-9 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-info-muted font-medium text-info"
+                    : locked
+                      ? "text-muted-foreground/60 hover:bg-surface-subtle"
+                      : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {locked ? (
+                  <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -166,6 +192,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         ) : null}
 
         <NavigationGroup
+          key={`payments-${groupIsActive(paymentItems, pathname)}`}
           label="Payments"
           items={paymentItems}
           pathname={pathname}
@@ -173,6 +200,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           onNavigate={onNavigate}
         />
         <NavigationGroup
+          key={`invoicing-${groupIsActive(invoiceItems, pathname)}`}
           label="Invoicing"
           items={invoiceItems}
           pathname={pathname}
@@ -180,6 +208,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           onNavigate={onNavigate}
         />
         <NavigationGroup
+          key={`account-${groupIsActive(accountItems, pathname)}`}
           label="Account"
           items={accountItems}
           pathname={pathname}
@@ -188,6 +217,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         />
         {isSuperAdmin ? (
           <NavigationGroup
+            key={`admin-${groupIsActive(adminItems, pathname)}`}
             label="Admin"
             items={adminItems}
             pathname={pathname}

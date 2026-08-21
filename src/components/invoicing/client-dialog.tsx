@@ -24,13 +24,17 @@ export function ClientDialog({
   onOpenChange,
   client,
   profiles,
+  initialProfileId,
+  lockProfile = false,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client?: InvoiceClient | null;
   profiles: InvoiceProfile[];
-  onSaved: () => void | Promise<void>;
+  initialProfileId?: string;
+  lockProfile?: boolean;
+  onSaved: (client: InvoiceClient) => void | Promise<void>;
 }) {
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState("");
@@ -43,13 +47,14 @@ export function ClientDialog({
   const [city, setCity] = useState("");
   const [subdivision, setSubdivision] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("USA");
+  const [country, setCountry] = useState("United States");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setProfileId(
       client?.profileId ||
+        initialProfileId ||
         profiles.find((profile) => profile.isDefault)?.id ||
         profiles[0]?.id ||
         ""
@@ -63,12 +68,13 @@ export function ClientDialog({
     setCity(client?.address.city || "");
     setSubdivision(client?.address.subdivision || "");
     setPostalCode(client?.address.postalCode || "");
-    setCountry(client?.address.country || "USA");
+    setCountry(client?.address.country || "United States");
     setNotes(client?.notes || "");
-  }, [client, open, profiles]);
+  }, [client, initialProfileId, open, profiles]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    event.stopPropagation();
     setSaving(true);
     try {
       const payload = {
@@ -87,11 +93,11 @@ export function ClientDialog({
         },
         notes: notes || undefined,
       };
-      await invoicingRequest(
+      const saved = await invoicingRequest<InvoiceClient>(
         client ? `/api/invoicing/clients/${client.id}` : "/api/invoicing/clients",
         { method: client ? "PUT" : "POST", ...jsonBody(payload) }
       );
-      await onSaved();
+      await onSaved(saved);
       onOpenChange(false);
       toast({
         variant: "success",
@@ -122,7 +128,7 @@ export function ClientDialog({
             <select
               className={selectClassName}
               value={profileId}
-              disabled={Boolean(client)}
+              disabled={Boolean(client) || lockProfile}
               onChange={(event) => setProfileId(event.target.value)}
               required
             >
@@ -140,8 +146,8 @@ export function ClientDialog({
           <Field label="City"><Input value={city} onChange={(event) => setCity(event.target.value)} /></Field>
           <Field label="State / region"><Input value={subdivision} onChange={(event) => setSubdivision(event.target.value)} /></Field>
           <Field label="Postal code"><Input value={postalCode} onChange={(event) => setPostalCode(event.target.value)} /></Field>
-          <Field label="Country code" hint="Three-letter ISO code, for example USA">
-            <Input required minLength={3} maxLength={3} value={country} onChange={(event) => setCountry(event.target.value.toUpperCase())} />
+          <Field label="Country">
+            <Input required minLength={2} maxLength={100} placeholder="United States" value={country} onChange={(event) => setCountry(event.target.value)} />
           </Field>
           <Field label="Notes" className="sm:col-span-2">
             <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
