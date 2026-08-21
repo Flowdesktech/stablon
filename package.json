@@ -1,6 +1,7 @@
 {
   "name": "stablon-platform",
   "version": "0.2.0",
+  "license": "LicenseRef-Stablon-Source-Available-1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -258,4 +258,11 @@ through Firebase; Vercel does not need a separate database.
 
 ## License
 
-MIT
+Stablon is distributed under the
+[Stablon Source-Available License 1.0](./LICENSE). The source is publicly
+available and free to use and modify privately. Redistributing a modified
+version requires prior written approval from the Stablon authors.
+
+These terms are source-available rather than OSI-approved open source. MIT and
+Apache 2.0 were not used because both permit redistribution of modified
+versions without the original author's approval.
