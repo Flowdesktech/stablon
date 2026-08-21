@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays } from "date-fns";
-import { ArrowLeft, FileCheck2 } from "lucide-react";
+import { ArrowLeft, Eye, FileCheck2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import {
   ErrorState,
@@ -24,6 +31,7 @@ import {
   type EditableLineItem,
 } from "@/components/invoicing/line-item-editor";
 import { TemplatePicker } from "@/components/invoicing/template-picker";
+import { InvoicePreview } from "@/components/invoicing/invoice-preview";
 import {
   invoicingRequest,
   jsonBody,
@@ -35,6 +43,7 @@ import type {
   InvoiceProfile,
   InvoiceTotals,
 } from "@/types/invoicing";
+import type { RenderableInvoice } from "@/lib/invoicing/renderable";
 
 function dateValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -84,8 +93,10 @@ export function InvoiceForm({
     invoice?.templateId || initialTemplateId || "modern-blue"
   );
   const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const selectedProfile = profiles?.find((profile) => profile.id === profileId);
+  const selectedClient = clients?.find((client) => client.id === clientId);
   const filteredClients = useMemo(
     () => (clients || []).filter((client) => client.profileId === profileId),
     [clients, profileId]
@@ -123,6 +134,96 @@ export function InvoiceForm({
     const tax = taxable * Math.max(Number(taxRate) || 0, 0) / 100;
     return { subtotal, discount, tax, total: taxable + tax };
   }, [discountType, discountValue, lineItems, taxRate]);
+
+  const previewInvoice = useMemo<RenderableInvoice>(() => {
+    const amount = (value: number) => (Number.isFinite(value) ? value : 0).toFixed(2);
+    const fallbackAddress = {
+      street: "",
+      city: "",
+      postalCode: "",
+      country: "",
+    };
+
+    return {
+      formattedNumber:
+        invoice?.formattedNumber ||
+        `${selectedProfile?.settings.prefix || "INV"}-PREVIEW`,
+      issueDate,
+      dueDate,
+      currency,
+      lineItems: lineItems.map((item, index) => {
+        const quantity = Number(item.quantity) || 0;
+        const rate = Number(item.rate) || 0;
+        return {
+          id: item.id || `preview-${index}`,
+          description: item.description.trim() || "Service or product",
+          quantity: item.quantity || "0",
+          rate: item.rate || "0",
+          amount: amount(quantity * rate),
+        };
+      }),
+      totals: {
+        subtotal: amount(totals.subtotal),
+        discountType,
+        discountValue: discountType === "none" ? "0" : discountValue,
+        discountAmount: amount(totals.discount),
+        taxableAmount: amount(Math.max(totals.subtotal - totals.discount, 0)),
+        taxRate,
+        taxAmount: amount(totals.tax),
+        total: amount(totals.total),
+      },
+      notes,
+      paymentTerms,
+      templateId,
+      sender: selectedProfile
+        ? {
+            profileId: selectedProfile.id,
+            displayName: selectedProfile.displayName,
+            company: selectedProfile.company,
+            email: selectedProfile.email,
+            phone: selectedProfile.phone,
+            address: selectedProfile.address,
+            logoUrl: selectedProfile.logoUrl,
+          }
+        : {
+            profileId: "preview",
+            displayName: "Your name",
+            company: "Your business",
+            email: "you@example.com",
+            address: fallbackAddress,
+          },
+      client: selectedClient
+        ? {
+            clientId: selectedClient.id,
+            name: selectedClient.name,
+            company: selectedClient.company,
+            email: selectedClient.email,
+            phone: selectedClient.phone,
+            address: selectedClient.address,
+          }
+        : {
+            clientId: "preview",
+            name: "Client name",
+            email: "client@example.com",
+            address: fallbackAddress,
+          },
+    };
+  }, [
+    currency,
+    discountType,
+    discountValue,
+    dueDate,
+    invoice?.formattedNumber,
+    issueDate,
+    lineItems,
+    notes,
+    paymentTerms,
+    selectedClient,
+    selectedProfile,
+    taxRate,
+    templateId,
+    totals,
+  ]);
 
   function changeProfile(nextId: string) {
     setProfileId(nextId);
@@ -221,9 +322,13 @@ export function InvoiceForm({
             : "Build a detailed invoice, review the total, then save it as a draft."
         }
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button asChild type="button" variant="outline">
               <Link href="/invoicing-settings">Invoice settings</Link>
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+              <Eye className="h-4 w-4" />
+              Preview
             </Button>
             <SubmitButton pending={saving}>
               <FileCheck2 className="h-4 w-4" />
@@ -409,6 +514,28 @@ export function InvoiceForm({
           </Card>
         </aside>
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[94vh] w-[min(calc(100vw-2rem),72rem)] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="pr-8">
+            <DialogTitle>Invoice preview</DialogTitle>
+            <DialogDescription>
+              This preview uses the current form values and selected template. Save the draft to
+              create the final invoice number.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-muted p-3 sm:p-6">
+            <div className="mx-auto min-w-[46rem] max-w-[50rem]">
+              <InvoicePreview invoice={previewInvoice} />
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button type="button" variant="outline" onClick={() => setPreviewOpen(false)}>
+              Continue editing
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
