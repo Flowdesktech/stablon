@@ -6,7 +6,7 @@ import type {
   BridgeVirtualAccountEvent,
 } from "@/types/bridge";
 
-const FIAT_RAILS = ["ach", "wire", "sepa", "pix", "spei", "fps", "faster"];
+const FIAT_RAILS = ["ach", "wire", "sepa", "fps", "faster"];
 
 function isFiatRail(rail: string | undefined) {
   const normalized = (rail || "").toLowerCase();

@@ -158,6 +158,7 @@ export interface BridgeTransfer {
   state: "awaiting_funds" | "in_review" | "funds_received" | "payment_submitted" | "payment_processed" | "completed" | "returned" | "canceled" | "error";
   source: TransferEndpoint;
   destination: TransferEndpoint;
+  source_deposit_instructions?: BridgeSourceDepositInstructions;
   amount: string;
   currency: string;
   developer_fee?: string;
@@ -165,6 +166,30 @@ export interface BridgeTransfer {
   created_at: string;
   updated_at: string;
   receipt?: TransferReceipt;
+}
+
+export interface BridgeSourceDepositInstructions {
+  amount?: string;
+  currency?: string;
+  payment_rail?: string;
+  payment_rails?: string[];
+  bank_name?: string;
+  bank_address?: string;
+  bank_account_number?: string;
+  bank_routing_number?: string;
+  bank_beneficiary_name?: string;
+  bank_beneficiary_address?: string;
+  account_holder_name?: string;
+  account_number?: string;
+  routing_number?: string;
+  sort_code?: string;
+  iban?: string;
+  bic?: string;
+  deposit_message?: string;
+  from_address?: string;
+  to_address?: string;
+  blockchain_memo?: string;
+  [key: string]: unknown;
 }
 
 export interface TransferEndpoint {

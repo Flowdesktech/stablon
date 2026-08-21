@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -55,8 +56,8 @@ export function SecuritySection() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-amber-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning-muted">
+              <Lock className="h-5 w-5 text-warning" />
             </div>
             <div>
               <CardTitle className="text-base">Security</CardTitle>
@@ -65,25 +66,25 @@ export function SecuritySection() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface-muted p-3">
             <div className="flex items-center gap-3">
-              <Lock className="w-4 h-4 text-white/40" />
+              <Lock className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm text-white">Password</p>
-                <p className="text-xs text-white/40">Keep your account secure with a strong password</p>
+                <p className="text-sm text-foreground">Password</p>
+                <p className="text-xs text-muted-foreground">Keep your account secure with a strong password.</p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setPwOpen(true)}>Change</Button>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface-muted p-3">
             <div className="flex items-center gap-3">
-              <Smartphone className="w-4 h-4 text-white/40" />
+              <Smartphone className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm text-white flex items-center gap-2">
+                <p className="flex items-center gap-2 text-sm text-foreground">
                   Two-Factor Auth
                   {twoFactorEnabled && <Badge variant="success">Enabled</Badge>}
                 </p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-muted-foreground">
                   {twoFactorEnabled
                     ? "An authenticator code is required at sign-in"
                     : "Add an extra layer of security with an authenticator app"}
@@ -98,15 +99,15 @@ export function SecuritySection() {
               {twoFactorEnabled ? "Disable" : "Enable"}
             </Button>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface-muted p-3">
             <div className="flex items-center gap-3">
-              <Timer className="w-4 h-4 text-white/40" />
+              <Timer className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm text-white flex items-center gap-2">
+                <p className="flex items-center gap-2 text-sm text-foreground">
                   App Lock
                   {passcodeEnabled && <Badge variant="success">On</Badge>}
                 </p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-muted-foreground">
                   {passcodeEnabled
                     ? "A passcode is required after 1 hour of inactivity"
                     : "Require a passcode after 1 hour of inactivity"}
@@ -169,8 +170,7 @@ function PasscodeField({
   autoFocus?: boolean;
 }) {
   return (
-    <div>
-      <label className="block text-xs font-medium text-white/50 mb-1.5">{label}</label>
+    <Field label={label}>
       <Input
         type="password"
         inputMode="numeric"
@@ -183,7 +183,7 @@ function PasscodeField({
         autoFocus={autoFocus}
         required
       />
-    </div>
+    </Field>
   );
 }
 
@@ -428,18 +428,15 @@ function ChangePasswordDialog({
           <DialogDescription>Enter your current password and choose a new one.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-white/50 mb-1.5">Current password</label>
+          <Field label="Current password">
             <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required autoFocus />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-white/50 mb-1.5">New password</label>
+          </Field>
+          <Field label="New password">
             <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} required placeholder="At least 8 characters" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-white/50 mb-1.5">Confirm new password</label>
+          </Field>
+          <Field label="Confirm new password">
             <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-          </div>
+          </Field>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={saving}>
@@ -582,9 +579,9 @@ function EnableTwoFactor({
                 Store these somewhere safe. Each code can be used once to sign in if you lose access to your authenticator. They won&apos;t be shown again.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/5 my-2">
+            <div className="my-2 grid grid-cols-1 gap-2 rounded-md border border-border bg-surface-muted p-3 sm:grid-cols-2">
               {recoveryCodes.map((rc) => (
-                <code key={rc} className="text-sm text-white/80 font-mono text-center py-1">{rc}</code>
+                <code key={rc} className="py-1 text-center font-mono text-sm text-foreground">{rc}</code>
               ))}
             </div>
             <div className="flex gap-2">
@@ -610,17 +607,17 @@ function EnableTwoFactor({
 
             {loading || !qrCode ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <form onSubmit={verify} className="space-y-4">
                 <div className="flex justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrCode} alt="2FA QR code" className="w-44 h-44 rounded-xl bg-white p-2" />
+                  <img src={qrCode} alt="2FA QR code" className="h-44 w-44 rounded-md bg-white p-2" />
                 </div>
 
                 <div>
-                  <p className="text-xs text-white/40 mb-1.5">Or enter this key manually:</p>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Or enter this key manually:</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -628,15 +625,14 @@ function EnableTwoFactor({
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2000);
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-left cursor-pointer hover:bg-white/[0.05] transition-colors"
+                    className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-surface-muted px-3 py-2 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
-                    <code className="text-xs text-white/70 font-mono break-all">{secret}</code>
-                    {copied ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-white/40 shrink-0" />}
+                    <code className="break-all font-mono text-xs text-foreground">{secret}</code>
+                    {copied ? <Check className="h-4 w-4 shrink-0 text-success" /> : <Copy className="h-4 w-4 shrink-0 text-muted-foreground" />}
                   </button>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-white/50 mb-1.5">Verification code</label>
+                <Field label="Verification code">
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -647,7 +643,7 @@ function EnableTwoFactor({
                     required
                     autoFocus
                   />
-                </div>
+                </Field>
 
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -706,8 +702,7 @@ function DisableTwoFactor({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-white/50 mb-1.5">Authentication code</label>
+          <Field label="Authentication code">
             <Input
               type="text"
               inputMode="numeric"
@@ -718,7 +713,7 @@ function DisableTwoFactor({
               required
               autoFocus
             />
-          </div>
+          </Field>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" variant="destructive" disabled={saving}>

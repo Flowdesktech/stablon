@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useActivity } from "@/hooks/use-bridge";
 import { ActivityRow } from "@/components/activity/activity-row";
 import type { ActivityItem } from "@/types/bridge";
-import { Inbox } from "lucide-react";
+import { PageHeader } from "@/components/ui/page";
+import { DataState, DataView } from "@/components/ui/data-view";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -26,20 +27,23 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Transactions</h1>
-        <p className="text-white/50 mt-1">Your deposits, withdrawals, and swaps</p>
-      </div>
+      <PageHeader
+        title="Transactions"
+        description="Review your deposits, withdrawals, and swaps."
+      />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-surface-muted p-1" role="radiogroup" aria-label="Transaction type">
         {FILTERS.map((f) => (
           <button
             key={f.id}
+            type="button"
+            role="radio"
+            aria-checked={filter === f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-4 h-9 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+            className={`h-8 rounded px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
               filter === f.id
-                ? "bg-purple-600/20 text-purple-300 border border-purple-500/40"
-                : "bg-white/[0.03] text-white/50 border border-white/5 hover:bg-white/[0.06]"
+                ? "bg-surface text-foreground shadow-[var(--shadow-sm)]"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {f.label}
@@ -47,30 +51,30 @@ export default function TransactionsPage() {
         ))}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      <DataView>
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton h-12" />)}
-            </div>
+            <DataState kind="loading" title="Loading transactions" />
           ) : items.length > 0 ? (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-border">
               {items.map((item) => (
                 <ActivityRow key={`${item.kind}-${item.id}`} item={item} />
               ))}
             </div>
           ) : (
-            <div className="p-12 flex flex-col items-center gap-3 text-center">
-              <Inbox className="w-8 h-8 text-white/20" />
-              <p className="text-sm text-white/40">
-                {filter === "all"
+            <DataState
+              title={filter === "all" ? "No transactions yet" : `No ${filter}s yet`}
+              description={
+                filter === "all"
                   ? "No transactions yet. Your activity will appear here."
-                  : `No ${filter}s yet.`}
-              </p>
-            </div>
+                  : `Transactions matching this filter will appear here.`
+              }
+            />
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </DataView>
     </div>
   );
 }

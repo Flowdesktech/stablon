@@ -17,7 +17,8 @@ export function ImpersonationBanner() {
     try {
       await stopImpersonation();
       // Hard navigate back to admin so all cached hooks re-fetch as the admin.
-      window.location.href = "/admin/users";
+      window.history.replaceState(null, "", "/admin/users");
+      window.location.reload();
     } catch (err) {
       toast({
         variant: "error",
@@ -29,7 +30,7 @@ export function ImpersonationBanner() {
   }
 
   return (
-    <div className="sticky top-0 z-40 flex items-center justify-center gap-3 bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-sm text-amber-200 backdrop-blur">
+    <div className="sticky top-16 z-20 flex items-center justify-center gap-3 border-b border-warning/25 bg-warning-muted px-4 py-2 text-sm text-foreground">
       <Eye className="w-4 h-4 shrink-0" />
       <span className="truncate">
         You are impersonating <span className="font-semibold">{profile.email}</span>
@@ -37,7 +38,7 @@ export function ImpersonationBanner() {
       <button
         onClick={exit}
         disabled={exiting}
-        className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-xs font-medium text-amber-100 hover:bg-amber-400/20 transition-colors disabled:opacity-50 cursor-pointer"
+        className="ml-1 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-warning/30 bg-surface px-2.5 py-1 text-xs font-medium text-warning transition-colors hover:bg-warning-muted disabled:opacity-50"
       >
         {exiting ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />

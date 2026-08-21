@@ -15,10 +15,9 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background:
-            "radial-gradient(1000px 600px at 20% 0%, rgba(168,85,247,0.25), transparent), radial-gradient(800px 500px at 100% 100%, rgba(59,130,246,0.2), transparent), #0a0a0f",
+          background: "#f6f8fa",
           padding: 80,
-          color: "white",
+          color: "#1f2328",
           fontFamily: "sans-serif",
         }}
       >
@@ -27,11 +26,12 @@ export default function OpengraphImage() {
             style={{
               width: 72,
               height: 72,
-              borderRadius: 20,
+              borderRadius: 12,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)",
+              background: "#0969da",
+              color: "#ffffff",
               fontSize: 44,
               fontWeight: 700,
             }}
@@ -53,25 +53,16 @@ export default function OpengraphImage() {
               maxWidth: 900,
             }}
           >
-            <span>One app.</span>
-            <span>One card.</span>
-            <span
-              style={{
-                backgroundImage: "linear-gradient(90deg, #c084fc, #60a5fa)",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              Everything money.
-            </span>
+            <span>Business payments.</span>
+            <span style={{ color: "#0969da" }}>Professional invoicing.</span>
           </div>
-          <div style={{ fontSize: 34, color: "rgba(255,255,255,0.65)", maxWidth: 940 }}>
-            Global USD & EUR accounts, a stablecoin Visa card, instant swaps, and up to 5% APY.
+          <div style={{ fontSize: 34, color: "#59636e", maxWidth: 940 }}>
+            Manage supported money accounts, bank and stablecoin workflows, invoices, and payment tracking.
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {["USD & EUR accounts", "Visa card", "0% fees", "160+ countries"].map((tag) => (
+          {["Money accounts", "Bank payments", "Stablecoin routes", "Invoice PDFs"].map((tag) => (
             <div
               key={tag}
               style={{
@@ -79,9 +70,9 @@ export default function OpengraphImage() {
                 fontSize: 26,
                 padding: "10px 22px",
                 borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.8)",
+                border: "1px solid #d8dee4",
+                background: "#ffffff",
+                color: "#59636e",
               }}
             >
               {tag}

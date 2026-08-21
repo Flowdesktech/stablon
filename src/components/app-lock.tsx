@@ -30,7 +30,7 @@ export function AppLock() {
   const [locked, setLocked] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
   const lockedRef = useRef(false);
 
   const setLockedState = useCallback((value: boolean) => {
@@ -82,8 +82,8 @@ export function AppLock() {
   useEffect(() => {
     if (!enabled) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      setLockedState(false);
-      return;
+      const unlockTimer = window.setTimeout(() => setLockedState(false), 0);
+      return () => window.clearTimeout(unlockTimer);
     }
 
     const storedActivity = readNumber(LAST_ACTIVITY_KEY);
@@ -95,8 +95,9 @@ export function AppLock() {
       // ignore
     }
 
+    let initialLockTimer: number | null = null;
     if (wasLocked || Date.now() - lastActivityRef.current > LOCK_AFTER_MS) {
-      lock();
+      initialLockTimer = window.setTimeout(lock, 0);
     } else {
       markActivity();
       arm();
@@ -129,6 +130,7 @@ export function AppLock() {
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onActivity));
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
+      if (initialLockTimer) window.clearTimeout(initialLockTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [enabled, arm, lock, markActivity, setLockedState]);
@@ -233,21 +235,16 @@ function LockScreen({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#0a0a0f]/95 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-sm text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 mb-6">
-          <Lock className="w-7 h-7 text-white" />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 text-center shadow-[var(--shadow-md)]">
+        <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-info-muted">
+          <Lock className="h-6 w-6 text-info" />
         </div>
 
         {!recovering ? (
           <>
-            <h1 className="text-2xl font-bold text-white">Locked</h1>
-            <p className="text-white/60 mt-2 mb-6">
+            <h1 className="text-2xl font-semibold text-foreground">Locked</h1>
+            <p className="mb-6 mt-2 text-muted-foreground">
               Enter your passcode to unlock Stablon.
             </p>
 
@@ -264,7 +261,7 @@ function LockScreen({
                 autoFocus
                 required
               />
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-sm text-danger">{error}</p>}
               <Button type="submit" className="w-full" disabled={submitting || passcode.length < 4}>
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Unlock"}
               </Button>
@@ -276,20 +273,20 @@ function LockScreen({
                   setRecovering(true);
                   setError("");
                 }}
-                className="text-purple-400 hover:underline"
+                className="text-primary hover:underline"
               >
                 Forgot passcode?
               </button>
-              <span className="text-white/20">•</span>
-              <button onClick={onSignOut} className="text-white/40 hover:underline">
+              <span className="text-border-strong">•</span>
+              <button onClick={onSignOut} className="text-muted-foreground hover:text-foreground hover:underline">
                 Sign out
               </button>
             </div>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-white">Reset passcode</h1>
-            <p className="text-white/60 mt-2 mb-6">
+            <h1 className="text-2xl font-semibold text-foreground">Reset passcode</h1>
+            <p className="mb-6 mt-2 text-muted-foreground">
               Confirm your account password to remove the passcode lock.
             </p>
 
@@ -303,7 +300,7 @@ function LockScreen({
                 autoFocus
                 required
               />
-              {recovError && <p className="text-red-400 text-sm">{recovError}</p>}
+              {recovError && <p className="text-sm text-danger">{recovError}</p>}
               <Button type="submit" className="w-full" disabled={resetting || !password}>
                 {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset & unlock"}
               </Button>
@@ -315,7 +312,7 @@ function LockScreen({
                 setRecovError("");
                 setPassword("");
               }}
-              className="mt-6 text-sm text-white/40 hover:underline"
+              className="mt-6 text-sm text-muted-foreground hover:text-foreground hover:underline"
             >
               Back to passcode
             </button>

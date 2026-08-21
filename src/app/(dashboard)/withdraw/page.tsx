@@ -5,6 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { Field } from "@/components/ui/field";
+import { PageHeader, SectionHeader } from "@/components/ui/page";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useExternalAccounts, addExternalAccount, useTransfers, createTransfer, useWallets } from "@/hooks/use-bridge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { walletBalanceOf } from "@/lib/bridge";
@@ -16,9 +21,7 @@ import {
   Plus,
   Clock,
   AlertCircle,
-  CheckCircle2,
   ChevronDown,
-  Inbox,
   Loader2,
 } from "lucide-react";
 
@@ -71,7 +74,7 @@ export default function WithdrawPage() {
   const withdrawalTransfers = (transfers as BridgeTransfer[])
     .filter((t) => {
       const rail = t.destination?.payment_rail || "";
-      const isBank = ["ach", "wire", "sepa", "pix", "spei", "fps"].some((r) => rail.includes(r));
+      const isBank = ["ach", "wire", "sepa", "fps"].some((r) => rail.includes(r));
       const isOnChain = Boolean(t.destination?.to_address);
       return method === "bank" ? isBank : isOnChain;
     })
@@ -139,27 +142,18 @@ export default function WithdrawPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Withdraw Funds</h1>
-        <p className="text-white/50 mt-1">Cash out to your bank account or send on-chain to any wallet</p>
-      </div>
+      <PageHeader title="Withdraw funds" description="Send funds to a linked bank account or an external wallet." />
 
-      <div className="flex gap-3">
-        <Button
-          variant={method === "bank" ? "default" : "outline"}
-          onClick={() => setMethod("bank")}
-          className="flex-1 sm:flex-none"
-        >
-          <Landmark className="w-4 h-4" /> To Bank
-        </Button>
-        <Button
-          variant={method === "crypto" ? "default" : "outline"}
-          onClick={() => setMethod("crypto")}
-          className="flex-1 sm:flex-none"
-        >
-          <Wallet className="w-4 h-4" /> On-Chain
-        </Button>
-      </div>
+      <SegmentedControl
+        label="Withdrawal method"
+        value={method}
+        onChange={(value) => setMethod(value as WithdrawMethod)}
+        options={[
+          { value: "bank", label: "To bank", icon: <Landmark className="h-4 w-4" /> },
+          { value: "crypto", label: "On-chain", icon: <Wallet className="h-4 w-4" /> },
+        ]}
+        className="w-full sm:w-auto"
+      />
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
@@ -170,29 +164,28 @@ export default function WithdrawPage() {
                 <CardDescription>Choose a destination and enter the amount</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Destination Bank Account</label>
+                <Field label="Destination bank account">
                   <div className="space-y-2">
                     {accountsLoading ? (
-                      <div className="skeleton h-16 rounded-xl" />
+                      <div className="skeleton h-16 rounded-md" />
                     ) : (bankAccounts as BridgeExternalAccount[]).length > 0 ? (
                       (bankAccounts as BridgeExternalAccount[]).map((account) => (
                         <button
                           key={account.id}
                           onClick={() => setSelectedAccount(account.id)}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                          className={`flex w-full items-center justify-between rounded-md border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                             selectedAccount === account.id
-                              ? "border-purple-500/50 bg-purple-500/5"
-                              : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                              ? "border-primary bg-info-muted"
+                              : "border-border bg-surface hover:bg-surface-muted"
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
-                              <Landmark className="w-4 h-4 text-white/50" />
+                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-subtle">
+                              <Landmark className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="text-left">
-                              <p className="text-sm font-medium text-white">{account.bank_name}</p>
-                              <p className="text-xs text-white/40">
+                              <p className="text-sm font-medium text-foreground">{account.bank_name}</p>
+                              <p className="text-xs text-muted-foreground">
                                 ••{account.last_4} &middot; {account.currency?.toUpperCase()}
                               </p>
                             </div>
@@ -201,21 +194,21 @@ export default function WithdrawPage() {
                         </button>
                       ))
                     ) : (
-                      <p className="text-sm text-white/40 py-2">No bank accounts linked yet. Add one below.</p>
+                      <p className="py-2 text-sm text-muted-foreground">No bank accounts linked yet. Add one below.</p>
                     )}
                     <button
                       onClick={() => setShowAddBank(!showAddBank)}
-                      className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/10 text-white/40 hover:text-white/60 hover:border-white/20 transition-all cursor-pointer"
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border-strong p-3 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       <Plus className="w-4 h-4" /> Add Bank Account
                     </button>
                   </div>
-                </div>
+                </Field>
 
                 {showAddBank && (
-                  <Card className="border-purple-500/20">
+                  <Card className="bg-surface-muted">
                     <CardContent className="p-4 space-y-3">
-                      <p className="text-sm font-medium text-white">Add New Bank Account</p>
+                      <p className="text-sm font-medium text-foreground">Add new bank account</p>
                       <Input placeholder="Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
                       <Input placeholder="Account Holder Name" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
                       <div className="grid grid-cols-2 gap-3">
@@ -232,8 +225,7 @@ export default function WithdrawPage() {
                   </Card>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Amount</label>
+                <Field label="Amount">
                   <div className="relative">
                     <Input
                       type="number"
@@ -242,29 +234,23 @@ export default function WithdrawPage() {
                       onChange={(e) => setAmount(e.target.value)}
                       className="text-lg pr-20"
                     />
-                    <button className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sm text-white/50 hover:text-white/70 transition-colors cursor-pointer">
+                    <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-sm text-muted-foreground">
                       USD <ChevronDown className="w-3 h-3" />
-                    </button>
+                    </span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-white/40">Available: {formatCurrency(usdBalance)}</span>
+                    <span className="text-xs text-muted-foreground">Available: {formatCurrency(usdBalance)}</span>
                     <button
                       onClick={() => setAmount(String(usdBalance))}
-                      className="text-xs text-purple-400 hover:underline cursor-pointer"
+                      className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       Withdraw Max
                     </button>
                   </div>
-                </div>
+                </Field>
 
                 {submitted ? (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-300">Withdrawal Initiated</p>
-                      <p className="text-xs text-emerald-300/60">Your funds will arrive within 1-2 business days.</p>
-                    </div>
-                  </div>
+                  <Alert variant="success" title="Withdrawal initiated" description="Your bank transfer is being processed." />
                 ) : (
                   <Button onClick={handleWithdraw} className="w-full" disabled={!selectedAccount || !amount || submitting}>
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpFromLine className="w-4 h-4" />}
@@ -280,8 +266,7 @@ export default function WithdrawPage() {
                 <CardDescription>Send stablecoins to an external wallet address</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Network</label>
+                <Field label="Network">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {onChainNetworks.map((n) => (
                       <button
@@ -290,52 +275,49 @@ export default function WithdrawPage() {
                           setNetwork(n.id);
                           if (!n.tokens.includes(token)) setToken(n.tokens[0]);
                         }}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                        className={`flex items-center gap-2 rounded-md border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                           network === n.id
-                            ? "border-purple-500/50 bg-purple-500/5"
-                            : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                            ? "border-primary bg-info-muted"
+                            : "border-border bg-surface hover:bg-surface-muted"
                         }`}
                       >
-                        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-white/60">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-subtle text-xs font-semibold text-muted-foreground">
                           {n.name.charAt(0)}
                         </div>
-                        <span className="text-sm font-medium text-white truncate">{n.name}</span>
+                        <span className="truncate text-sm font-medium text-foreground">{n.name}</span>
                       </button>
                     ))}
                   </div>
-                </div>
+                </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Token</label>
+                <Field label="Token">
                   <div className="flex gap-2">
                     {activeNetwork.tokens.map((t) => (
                       <button
                         key={t}
                         onClick={() => setToken(t)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all cursor-pointer ${
+                        className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                           token === t
-                            ? "border-purple-500/50 bg-purple-500/5 text-white"
-                            : "border-white/5 bg-white/[0.02] text-white/60 hover:bg-white/[0.04]"
+                            ? "border-primary bg-info-muted text-foreground"
+                            : "border-border bg-surface text-muted-foreground hover:bg-surface-muted"
                         }`}
                       >
                         {t.toUpperCase()}
                       </button>
                     ))}
                   </div>
-                </div>
+                </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Destination Address</label>
+                <Field label="Destination address">
                   <Input
                     placeholder={`Recipient ${activeNetwork.name} address`}
                     value={toAddress}
                     onChange={(e) => setToAddress(e.target.value)}
                     className="font-mono text-sm"
                   />
-                </div>
+                </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">Amount</label>
+                <Field label="Amount">
                   <div className="relative">
                     <Input
                       type="number"
@@ -344,36 +326,29 @@ export default function WithdrawPage() {
                       onChange={(e) => setCryptoAmount(e.target.value)}
                       className="text-lg pr-20"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/50">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                       {token.toUpperCase()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-white/40">Available: {formatCurrency(usdBalance)}</span>
+                    <span className="text-xs text-muted-foreground">Available: {formatCurrency(usdBalance)}</span>
                     <button
                       onClick={() => setCryptoAmount(String(usdBalance))}
-                      className="text-xs text-purple-400 hover:underline cursor-pointer"
+                      className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       Withdraw Max
                     </button>
                   </div>
-                </div>
+                </Field>
 
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                  <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-amber-300">
-                    Double-check the address and network. On-chain transfers are irreversible, and sending to the wrong network may result in permanent loss.
-                  </p>
-                </div>
+                <Alert
+                  variant="warning"
+                  title="Check the address and network"
+                  description="On-chain transfers are irreversible. Using the wrong network may result in permanent loss."
+                />
 
                 {cryptoSubmitted ? (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-300">Withdrawal Submitted</p>
-                      <p className="text-xs text-emerald-300/60">Your on-chain transfer is being processed.</p>
-                    </div>
-                  </div>
+                  <Alert variant="success" title="Withdrawal submitted" description="Your on-chain transfer is being processed." />
                 ) : (
                   <Button onClick={handleCryptoWithdraw} className="w-full" disabled={!toAddress || !cryptoAmount || cryptoSubmitting}>
                     {cryptoSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpFromLine className="w-4 h-4" />}
@@ -392,24 +367,24 @@ export default function WithdrawPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-white/50">Amount</span>
-                <span className="text-white">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="text-foreground">
                   {method === "bank" ? `$${amount || "0.00"}` : `${cryptoAmount || "0.00"} ${token.toUpperCase()}`}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-white/50">Network Fee</span>
-                <span className="text-emerald-400">$0.00</span>
+                <span className="text-muted-foreground">Network fee</span>
+                <span className="text-success">$0.00</span>
               </div>
-              <div className="border-t border-white/5 pt-3 flex justify-between text-sm">
-                <span className="text-white/70 font-medium">You receive</span>
-                <span className="text-white font-bold">
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span className="font-medium text-foreground">You receive</span>
+                <span className="font-semibold text-foreground">
                   {method === "bank" ? `$${amount || "0.00"}` : `${cryptoAmount || "0.00"} ${token.toUpperCase()}`}
                 </span>
               </div>
-              <div className="flex items-start gap-2 mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                <AlertCircle className="w-4 h-4 text-white/30 mt-0.5 shrink-0" />
-                <p className="text-xs text-white/40">
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-surface-muted p-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
                   {method === "bank"
                     ? "Bank withdrawals are processed during banking hours. Weekends and holidays may cause delays."
                     : "On-chain withdrawals typically settle within minutes, depending on network congestion."}
@@ -422,34 +397,31 @@ export default function WithdrawPage() {
 
       {/* History */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4">
-          {method === "bank" ? "Bank Withdrawals" : "On-Chain Withdrawals"}
-        </h2>
-        <Card>
-          <CardContent className="p-0">
+        <SectionHeader title={method === "bank" ? "Bank withdrawals" : "On-chain withdrawals"} className="mb-4" />
+        <DataView>
             {transfersLoading ? (
               <div className="p-6 space-y-3">
                 {[1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}
               </div>
             ) : withdrawalTransfers.length > 0 ? (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {withdrawalTransfers.map((item) => (
                   <div key={item.id} className="flex items-center justify-between px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <ArrowUpFromLine className="w-4 h-4 text-blue-400" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-info-muted">
+                        <ArrowUpFromLine className="h-4 w-4 text-info" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-foreground">
                           {(item.destination?.payment_rail || "withdrawal").toUpperCase()}
                         </p>
-                        <div className="flex items-center gap-1.5 text-xs text-white/40">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" /> {formatDate(item.created_at)}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {method === "bank"
                           ? formatCurrency(parseFloat(item.amount || "0"))
                           : `${parseFloat(item.amount || "0")} ${(item.destination?.currency || "").toUpperCase()}`}
@@ -460,13 +432,9 @@ export default function WithdrawPage() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 flex flex-col items-center gap-3 text-center">
-                <Inbox className="w-8 h-8 text-white/20" />
-                <p className="text-sm text-white/40">No withdrawal history yet.</p>
-              </div>
+              <DataState title="No withdrawal history yet" description="Completed and pending withdrawals will appear here." />
             )}
-          </CardContent>
-        </Card>
+        </DataView>
       </div>
     </div>
   );

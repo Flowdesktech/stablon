@@ -26,7 +26,7 @@ export function CopyAllButton({
     <Button variant="outline" size="sm" className={className} onClick={handleCopy}>
       {copied ? (
         <>
-          <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+          <Check className="h-3.5 w-3.5 text-success" /> Copied
         </>
       ) : (
         <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,11 @@ export function ContactForm() {
         throw new Error(data.error || "Couldn't send your message");
       }
       setSent(true);
-      toast({ variant: "success", title: "Message sent", description: "We'll get back to you soon." });
+      toast({
+        variant: "success",
+        title: "Message sent",
+        description: "We'll reply by email after reviewing your request.",
+      });
     } catch (err) {
       toast({
         variant: "error",
@@ -44,14 +49,24 @@ export function ContactForm() {
 
   if (sent) {
     return (
-      <Card>
-        <CardContent className="p-8 flex flex-col items-center gap-3 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-            <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+      <Card role="status" className="overflow-hidden">
+        <CardContent className="flex min-h-80 flex-col items-center justify-center gap-3 p-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-success-muted">
+            <CheckCircle2 className="h-6 w-6 text-success" aria-hidden="true" />
           </div>
-          <p className="text-white font-medium">Thanks for reaching out</p>
-          <p className="text-sm text-white/50">We've received your message and will reply to {email} shortly.</p>
-          <Button variant="outline" onClick={() => { setSent(false); setMessage(""); }}>
+          <p className="font-semibold text-foreground">Message received</p>
+          <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+            We&apos;ll reply to <span className="font-medium text-foreground">{email}</span> after
+            reviewing your message.
+          </p>
+          <Button
+            variant="outline"
+            className="mt-2"
+            onClick={() => {
+              setSent(false);
+              setMessage("");
+            }}
+          >
             Send another message
           </Button>
         </CardContent>
@@ -60,29 +75,34 @@ export function ContactForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Contact us</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border bg-surface-muted">
+        <CardTitle className="text-lg">Send a message</CardTitle>
         <CardDescription>
-          Questions, feedback, or need a hand? Send us a message and we'll reply by email.
+          All fields are required. We&apos;ll use your email only to respond to this request.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+      <CardContent className="p-5 sm:p-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label htmlFor="contact-name" className="text-xs text-white/50">Name</label>
+              <label htmlFor="contact-name" className="text-sm font-medium text-foreground">
+                Name
+              </label>
               <Input
                 id="contact-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
                 className="mt-1.5"
+                autoComplete="name"
                 required
               />
             </div>
             <div>
-              <label htmlFor="contact-email" className="text-xs text-white/50">Email</label>
+              <label htmlFor="contact-email" className="text-sm font-medium text-foreground">
+                Email address
+              </label>
               <Input
                 id="contact-email"
                 type="email"
@@ -90,29 +110,44 @@ export function ContactForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="mt-1.5"
+                autoComplete="email"
                 required
               />
             </div>
           </div>
           <div>
-            <label htmlFor="contact-message" className="text-xs text-white/50">Message</label>
+            <label htmlFor="contact-message" className="text-sm font-medium text-foreground">
+              Message
+            </label>
             <Textarea
               id="contact-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="How can we help?"
-              className="mt-1.5"
+              placeholder="Tell us what you need help with."
+              className="mt-1.5 min-h-36 resize-y"
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={sending}>
+          <div className="rounded-md border border-border bg-surface-muted px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+            Do not include passwords, authentication codes, private keys, or full payment
+            credentials.
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            By submitting this form, you acknowledge that your information will be handled as
+            described in our{" "}
+            <Link href="/privacy" className="font-medium text-primary hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+          <Button type="submit" className="w-full sm:w-auto" disabled={sending} aria-busy={sending}>
             {sending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Sending…
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Sending…
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" /> Send message
+                <Send className="h-4 w-4" aria-hidden="true" /> Send message
               </>
             )}
           </Button>

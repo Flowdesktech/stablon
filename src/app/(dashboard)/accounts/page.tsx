@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { Field, Select } from "@/components/ui/field";
+import { PageHeader } from "@/components/ui/page";
 import {
   DESTINATION_CHAINS,
   getChain,
@@ -37,44 +41,39 @@ import {
   Wallet,
   Pencil,
   X,
-  Info,
 } from "lucide-react";
 
 // One-time setup fee (USD) charged before the first virtual account is created.
 // Shown prominently so the payment step isn't a surprise. Keep in sync with the
 // server's VIRTUAL_ACCOUNT_FEE_USD.
-const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "20";
+const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "10";
 // Ongoing deposit processing fee (%), mirrored from BRIDGE_DEVELOPER_FEE_PERCENT.
-const DEPOSIT_FEE_PERCENT = process.env.NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT || "3";
+const DEPOSIT_FEE_PERCENT = process.env.NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT || "1";
 
 // Prominent notice explaining the one-time setup fee, so users understand why
 // they're asked to pay (via crypto) before their first account is created.
 function FeeNotice() {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-purple-500/30 bg-purple-500/[0.08] p-4">
-      <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
-        <Info className="w-4.5 h-4.5 text-purple-300" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-white">
-          One-time ${FEE_USD} setup fee
-        </p>
-        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+    <Alert
+      variant="info"
+      title={`One-time $${FEE_USD} setup fee`}
+      description={
+        <>
           Issuing a dedicated bank account carries a real provisioning cost, so we charge a{" "}
-          <span className="text-white/90 font-medium">one-time ${FEE_USD} fee</span>&nbsp; before your first
+          <span className="font-medium text-foreground">one-time ${FEE_USD} fee</span>&nbsp; before your first
           account is created. It&apos;s paid in crypto (USDC, USDT, and more) via our payment partner,
           covers all your future accounts, and is separate from the {DEPOSIT_FEE_PERCENT}% processing on deposits.
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
 
 // Fiat currencies Bridge can issue virtual accounts for, with their local rail.
 const FIAT_CURRENCIES = [
-  { id: "usd", label: "USD", rail: "ACH / Wire", icon: DollarSign, color: "text-emerald-400" },
-  { id: "eur", label: "EUR", rail: "SEPA", icon: Euro, color: "text-blue-400" },
-  { id: "gbp", label: "GBP", rail: "Faster Payments", icon: PoundSterling, color: "text-purple-400" },
+  { id: "usd", label: "USD", rail: "ACH / Wire", icon: DollarSign, color: "text-success" },
+  { id: "eur", label: "EUR", rail: "SEPA", icon: Euro, color: "text-info" },
+  { id: "gbp", label: "GBP", rail: "Faster Payments", icon: PoundSterling, color: "text-primary" },
 ];
 
 function getFiat(currency: string | undefined) {
@@ -90,19 +89,21 @@ function CopyButton({ text }: { text: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+      type="button"
+      aria-label="Copy value"
+      className="rounded p-1 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-white/40" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.03] border border-white/5">
+    <div className="flex items-center justify-between rounded-md border border-border bg-surface-muted px-3 py-2">
       <div className="min-w-0">
-        <p className="text-xs text-white/40">{label}</p>
-        <p className="text-sm text-white font-mono break-all">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="break-all font-mono text-sm text-foreground">{value}</p>
       </div>
       <CopyButton text={value} />
     </div>
@@ -112,15 +113,15 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <p className="text-xs text-white/40">{label}</p>
-      <p className="text-xs text-white/80 text-right break-words">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="break-words text-right text-xs text-foreground">{value}</p>
     </div>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35 pt-1">
+    <p className="pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
       {children}
     </p>
   );
@@ -179,17 +180,16 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
   }
 
   return (
-    <Card className="relative overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-              <CurrencyIcon className={`w-5 h-5 ${fiat?.color ?? "text-white/70"}`} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-subtle">
+              <CurrencyIcon className={`h-5 w-5 ${fiat?.color ?? "text-muted-foreground"}`} />
             </div>
             <div>
               <CardTitle className="text-base">{account.currency?.toUpperCase()} Account</CardTitle>
-              <p className="text-xs text-white/40">{railsLabel || fiat?.rail || "Bank transfer"}</p>
+              <p className="text-xs text-muted-foreground">{railsLabel || fiat?.rail || "Bank transfer"}</p>
             </div>
           </div>
           <Badge variant={account.status === "active" ? "success" : "secondary"}>
@@ -199,7 +199,7 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {details.bank_name && (
-          <div className="text-xs text-white/40 flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Landmark className="w-3.5 h-3.5" />
             {details.bank_name}
           </div>
@@ -214,13 +214,13 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
         <CopyAllButton text={buildAccountDetailsText(account)} className="w-full" />
 
         {/* Destination */}
-        <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+        <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
           <div className="flex items-center justify-between">
             <SectionLabel>Destination details</SectionLabel>
             {!editing && (
               <button
                 onClick={startEdit}
-                className="flex items-center gap-1 text-xs text-purple-300 hover:text-purple-200 transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <Pencil className="w-3 h-3" /> Edit
               </button>
@@ -229,41 +229,36 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
 
           {editing ? (
             <div className="space-y-3 pt-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] text-white/40">Chain</label>
-                  <select
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Chain">
+                  <Select
                     value={chainId}
                     onChange={(e) => handleChainChange(e.target.value)}
-                    className="mt-1 w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-2 text-xs text-white outline-none focus:border-purple-500/50 cursor-pointer"
                   >
                     {DESTINATION_CHAINS.map((c) => (
-                      <option key={c.id} value={c.id} className="bg-[#14141c]">{c.label}</option>
+                      <option key={c.id} value={c.id}>{c.label}</option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] text-white/40">Coin</label>
-                  <select
+                  </Select>
+                </Field>
+                <Field label="Coin">
+                  <Select
                     value={coin}
                     onChange={(e) => setCoin(e.target.value)}
-                    className="mt-1 w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-2 text-xs text-white outline-none focus:border-purple-500/50 cursor-pointer"
                   >
                     {editChain.coins.map((c) => (
-                      <option key={c} value={c} className="bg-[#14141c]">{c.toUpperCase()}</option>
+                      <option key={c} value={c}>{c.toUpperCase()}</option>
                     ))}
-                  </select>
-                </div>
+                  </Select>
+                </Field>
               </div>
-              <div>
-                <label className="text-[11px] text-white/40">Wallet address</label>
+              <Field label="Wallet address">
                 <Input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder={editChain.addressHint}
-                  className="mt-1 font-mono text-xs h-10"
+                  className="font-mono text-xs"
                 />
-              </div>
+              </Field>
               <div className="flex gap-2">
                 <Button size="sm" className="flex-1" disabled={!address.trim() || saving} onClick={handleSave}>
                   {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</> : <><Check className="w-3.5 h-3.5" /> Save</>}
@@ -280,15 +275,15 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
               {dest.address && (
                 <div className="flex items-center justify-between gap-2 pt-1.5">
                   <div className="min-w-0 flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5 text-white/40 shrink-0" />
-                    <p className="text-xs text-white/80 font-mono break-all">{dest.address}</p>
+                    <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <p className="break-all font-mono text-xs text-foreground">{dest.address}</p>
                   </div>
                   <CopyButton text={dest.address} />
                 </div>
               )}
             </>
           ) : (
-            <p className="text-xs text-white/40 pt-1.5">No destination set. Click Edit to add one.</p>
+            <p className="pt-1.5 text-xs text-muted-foreground">No destination set. Select Edit to add one.</p>
           )}
         </div>
       </CardContent>
@@ -357,34 +352,25 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Global Accounts</h1>
-          <p className="text-white/50 mt-1">USD, EUR and GBP accounts for receiving payments worldwide</p>
-        </div>
-        <Button onClick={() => setCreating(!creating)}>
-          <Plus className="w-4 h-4" /> New Account
-        </Button>
-      </div>
+      <PageHeader
+        title="Global accounts"
+        description="Manage USD, EUR, and GBP accounts for receiving payments."
+        actions={
+          <Button onClick={() => setCreating(!creating)}>
+            <Plus className="h-4 w-4" /> New account
+          </Button>
+        }
+      />
 
       {paidParam === "1" && (
-        <Card className="border-emerald-500/30 bg-emerald-500/[0.05]">
-          <CardContent className="p-4 text-sm text-emerald-300">
-            Payment received. Once it confirms on-chain you can create your account — try again in a moment.
-          </CardContent>
-        </Card>
+        <Alert variant="success" title="Payment received" description="Once it confirms on-chain, you can create your account. Try again in a moment." />
       )}
       {cancelledParam === "cancelled" && (
-        <Card className="border-amber-500/30 bg-amber-500/[0.05]">
-          <CardContent className="p-4 text-sm text-amber-300">
-            Payment was cancelled. A one-time ${FEE_USD} setup fee is required to create your first virtual
-            account — you can retry anytime below.
-          </CardContent>
-        </Card>
+        <Alert variant="warning" title="Payment cancelled" description={`A one-time $${FEE_USD} setup fee is required to create your first virtual account. You can retry below.`} />
       )}
 
       {creating && (
-        <Card className="border-purple-500/30">
+        <Card>
           <CardHeader>
             <CardTitle>Create Virtual Account</CardTitle>
             <CardDescription>
@@ -393,72 +379,66 @@ export default function AccountsPage() {
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Fiat account currency */}
-            <div>
-              <label className="text-xs text-white/50">Account currency</label>
-              <div className="grid grid-cols-3 gap-2 mt-1.5">
+            <Field label="Account currency">
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
                 {FIAT_CURRENCIES.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setFiatCurrency(c.id)}
-                    className={`flex flex-col items-center justify-center gap-0.5 h-16 rounded-xl border transition-colors cursor-pointer ${
+                    className={`flex h-16 flex-col items-center justify-center gap-0.5 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                       fiatCurrency === c.id
-                        ? "border-purple-500/50 bg-purple-600/15 text-white"
-                        : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]"
+                        ? "border-primary bg-info-muted text-foreground"
+                        : "border-border bg-surface text-muted-foreground hover:bg-surface-muted"
                     }`}
                   >
                     <c.icon className="w-4 h-4" />
                     <span className="font-medium text-sm">{c.label}</span>
-                    <span className="text-[10px] text-white/40">{c.rail}</span>
+                    <span className="text-[10px] text-muted-foreground">{c.rail}</span>
                   </button>
                 ))}
               </div>
-            </div>
+            </Field>
 
             {/* Destination chain + coin */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-white/50">Destination chain</label>
-                <select
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Destination chain">
+                <Select
                   value={chainId}
                   onChange={(e) => handleChainChange(e.target.value)}
-                  className="mt-1.5 w-full h-11 rounded-xl bg-white/[0.03] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
                 >
                   {DESTINATION_CHAINS.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-[#14141c]">
+                    <option key={c.id} value={c.id}>
                       {c.label}
                     </option>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-white/50">Stablecoin</label>
-                <select
+                </Select>
+              </Field>
+              <Field label="Stablecoin">
+                <Select
                   value={coin}
                   onChange={(e) => setCoin(e.target.value)}
-                  className="mt-1.5 w-full h-11 rounded-xl bg-white/[0.03] border border-white/10 px-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
                 >
                   {selectedChain.coins.map((c) => (
-                    <option key={c} value={c} className="bg-[#14141c]">
+                    <option key={c} value={c}>
                       {c.toUpperCase()}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
 
             {/* Destination address */}
-            <div>
-              <label className="text-xs text-white/50">Destination wallet address</label>
+            <Field
+              label="Destination wallet address"
+              hint={`${coin.toUpperCase()} on ${selectedChain.label} will be delivered to this address.`}
+            >
               <Input
                 value={destinationAddress}
                 onChange={(e) => setDestinationAddress(e.target.value)}
                 placeholder={selectedChain.addressHint}
-                className="mt-1.5 font-mono text-sm"
+                className="font-mono text-sm"
               />
-              <p className="text-xs text-white/40 mt-1.5">
-                {coin.toUpperCase()} on {selectedChain.label} will be delivered to this address.
-              </p>
-            </div>
+            </Field>
 
             {!feePaid && <FeeNotice />}
 
@@ -478,7 +458,7 @@ export default function AccountsPage() {
               )}
             </Button>
             {!feePaid && (
-              <p className="text-[11px] text-white/40 text-center">
+              <p className="text-center text-[11px] text-muted-foreground">
                 You&apos;ll be redirected to our secure crypto checkout to complete the one-time payment.
               </p>
             )}
@@ -487,9 +467,7 @@ export default function AccountsPage() {
       )}
 
       {isLoading ? (
-        <div className="grid md:grid-cols-2 gap-6">
-          {[1, 2].map((i) => <div key={i} className="skeleton h-64 rounded-2xl" />)}
-        </div>
+        <DataView><DataState kind="loading" title="Loading accounts" /></DataView>
       ) : (accounts as AppVirtualAccount[]).length > 0 ? (
         <div className="grid md:grid-cols-2 gap-6">
           {(accounts as AppVirtualAccount[]).map((account) => (
@@ -497,14 +475,14 @@ export default function AccountsPage() {
           ))}
         </div>
       ) : creating ? null : (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center gap-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
-              <Globe className="w-7 h-7 text-white/20" />
+        <DataView>
+          <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-surface-subtle">
+              <Globe className="h-6 w-6 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-white/70 font-medium">No accounts yet</p>
-              <p className="text-sm text-white/40 mt-1">Create a USD, EUR or GBP virtual account to receive payments worldwide.</p>
+              <p className="font-medium text-foreground">No accounts yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create a USD, EUR, or GBP virtual account to receive payments.</p>
             </div>
             {!feePaid && (
               <div className="w-full max-w-md text-left">
@@ -512,10 +490,10 @@ export default function AccountsPage() {
               </div>
             )}
             <Button onClick={() => setCreating(true)}>
-              <Plus className="w-4 h-4" /> Create Account
+              <Plus className="w-4 h-4" /> Create account
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DataView>
       )}
     </div>
   );

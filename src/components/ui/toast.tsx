@@ -33,10 +33,10 @@ export function toast(opts: ToastOptions) {
 }
 
 const variantConfig: Record<ToastVariant, { icon: LucideIcon; accent: string; iconColor: string }> = {
-  default: { icon: Info, accent: "border-white/10", iconColor: "text-white/70" },
-  success: { icon: CheckCircle2, accent: "border-emerald-500/30", iconColor: "text-emerald-400" },
-  error: { icon: AlertCircle, accent: "border-red-500/30", iconColor: "text-red-400" },
-  info: { icon: Info, accent: "border-purple-500/30", iconColor: "text-purple-400" },
+  default: { icon: Info, accent: "border-border", iconColor: "text-muted-foreground" },
+  success: { icon: CheckCircle2, accent: "border-success/30", iconColor: "text-success" },
+  error: { icon: AlertCircle, accent: "border-danger/30", iconColor: "text-danger" },
+  info: { icon: Info, accent: "border-info/30", iconColor: "text-info" },
 };
 
 export function Toaster() {
@@ -65,23 +65,23 @@ export function Toaster() {
               if (!open) remove(t.id);
             }}
             className={cn(
-              "toast-root pointer-events-auto relative flex items-start gap-3 w-full rounded-xl border bg-[#14141c] p-4 shadow-lg shadow-black/40",
+              "toast-root pointer-events-auto relative flex w-full items-start gap-3 rounded-lg border bg-surface p-4 text-foreground shadow-[var(--shadow-md)]",
               config.accent
             )}
           >
             <Icon className={cn("w-5 h-5 shrink-0 mt-0.5", config.iconColor)} />
             <div className="flex-1 min-w-0">
-              <ToastPrimitive.Title className="text-sm font-medium text-white">
+              <ToastPrimitive.Title className="text-sm font-medium text-foreground">
                 {t.title}
               </ToastPrimitive.Title>
               {t.description && (
-                <ToastPrimitive.Description className="text-xs text-white/50 mt-1 break-words">
+                <ToastPrimitive.Description className="mt-1 break-words text-xs text-muted-foreground">
                   {t.description}
                 </ToastPrimitive.Description>
               )}
             </div>
             <ToastPrimitive.Close
-              className="shrink-0 rounded-md p-1 text-white/30 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="shrink-0 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground"
               aria-label="Close"
             >
               <X className="w-4 h-4" />

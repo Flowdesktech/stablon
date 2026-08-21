@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DataState, DataView } from "@/components/ui/data-view";
 import { useActivity } from "@/hooks/use-bridge";
 import { formatDate } from "@/lib/utils";
 import {
@@ -22,7 +23,6 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Inbox,
 } from "lucide-react";
 
 function Row({
@@ -40,21 +40,21 @@ function Row({
 }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-start justify-between gap-4 py-3 border-b border-white/5 last:border-0">
-      <p className="text-sm text-white/40 shrink-0">{label}</p>
+    <div className="flex items-start justify-between gap-4 border-b border-border py-3 last:border-0">
+      <p className="shrink-0 text-sm text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2 min-w-0">
         {href ? (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-sm text-purple-300 hover:text-purple-200 text-right break-all inline-flex items-center gap-1 ${mono ? "font-mono" : ""}`}
+            className={`inline-flex items-center gap-1 break-all text-right text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${mono ? "font-mono" : ""}`}
           >
             {value}
             <ExternalLink className="w-3 h-3 shrink-0" />
           </a>
         ) : (
-          <p className={`text-sm text-white text-right break-all ${mono ? "font-mono" : ""}`}>{value}</p>
+          <p className={`break-all text-right text-sm text-foreground ${mono ? "font-mono" : ""}`}>{value}</p>
         )}
         {copy && (
           <button
@@ -63,9 +63,11 @@ function Row({
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             }}
-            className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+            type="button"
+            aria-label={`Copy ${label.toLowerCase()}`}
+            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-white/40" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
         )}
       </div>
@@ -76,10 +78,10 @@ function Row({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-white/60 mb-1">{title}</h2>
-      <Card>
-        <CardContent className="py-1">{children}</CardContent>
-      </Card>
+      <h2 className="mb-2 text-sm font-semibold text-foreground">{title}</h2>
+      <DataView>
+        <div className="px-5 py-1">{children}</div>
+      </DataView>
     </div>
   );
 }
@@ -104,15 +106,12 @@ export default function TransactionDetailPage() {
   if (!item) {
     return (
       <div className="space-y-6 animate-fade-in max-w-2xl">
-        <Link href="/transactions" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
+        <Link href="/transactions" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <ArrowLeft className="w-4 h-4" /> Back to transactions
         </Link>
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center gap-3 text-center">
-            <Inbox className="w-8 h-8 text-white/20" />
-            <p className="text-sm text-white/40">Transaction not found.</p>
-          </CardContent>
-        </Card>
+        <DataView>
+          <DataState title="Transaction not found" description="The transaction may no longer be available." />
+        </DataView>
       </div>
     );
   }
@@ -129,30 +128,29 @@ export default function TransactionDetailPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
-      <Link href="/transactions" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
+      <Link href="/transactions" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
         <ArrowLeft className="w-4 h-4" /> Back to transactions
       </Link>
 
       {/* Summary */}
-      <Card className="relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-blue-500" />
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center">
-                {item.type === "deposit" && <ArrowDownToLine className="w-5 h-5 text-emerald-400" />}
-                {item.type === "withdrawal" && <ArrowUpFromLine className="w-5 h-5 text-blue-400" />}
-                {item.type === "swap" && <ArrowLeftRight className="w-5 h-5 text-purple-400" />}
+              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-surface-subtle">
+                {item.type === "deposit" && <ArrowDownToLine className="h-5 w-5 text-success" />}
+                {item.type === "withdrawal" && <ArrowUpFromLine className="h-5 w-5 text-info" />}
+                {item.type === "swap" && <ArrowLeftRight className="h-5 w-5 text-primary" />}
               </div>
               <div>
-                <p className="text-base font-semibold text-white">{item.description}</p>
-                <p className="text-xs text-white/40">{formatDate(item.created_at)}</p>
+                <p className="text-base font-semibold text-foreground">{item.description}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
               </div>
             </div>
             <Badge variant={statusVariant(item.status)}>{statusLabel(item.status)}</Badge>
           </div>
           <div className="pt-4">
-            <p className={`text-3xl font-bold ${isIncoming ? "text-emerald-400" : "text-white"}`}>
+            <p className={`text-3xl font-semibold tracking-tight ${isIncoming ? "text-success" : "text-foreground"}`}>
               {isIncoming ? "+" : "-"}
               {formatAmount(amt, item.currency)}
             </p>

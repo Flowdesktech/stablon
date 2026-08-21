@@ -4,13 +4,16 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { PageHeader } from "@/components/ui/page";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useVirtualAccounts, useWallets, createWallet } from "@/hooks/use-bridge";
 import type { AppVirtualAccount, BridgeWallet } from "@/types/bridge";
 import { formatPaymentRails, formatChainLabel } from "@/lib/bridge-chains";
 import { CopyAllButton } from "@/components/copy-all-button";
 import { buildAccountDetailsText } from "@/lib/account-details";
 import {
-  ArrowDownToLine,
   Landmark,
   Wallet,
   Copy,
@@ -45,16 +48,18 @@ const cryptoChains = [
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="flex items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/5">
+    <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-muted px-3 py-2.5">
       <div className="min-w-0">
-        <p className="text-xs text-white/40">{label}</p>
-        <p className="text-sm text-white font-mono break-all">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="break-all font-mono text-sm text-foreground">{value}</p>
       </div>
       <button
         onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-        className="p-1.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
+        type="button"
+        aria-label={`Copy ${label.toLowerCase()}`}
+        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-surface-subtle hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
-        {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-white/40" />}
+        {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
       </button>
     </div>
   );
@@ -63,16 +68,16 @@ function CopyField({ label, value }: { label: string; value: string }) {
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <p className="text-xs text-white/40">{label}</p>
-      <p className="text-xs text-white/80 text-right break-words">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="break-words text-right text-xs text-foreground">{value}</p>
     </div>
   );
 }
 
 function DepositSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35 pb-1">{title}</p>
+    <div className="rounded-md border border-border bg-surface-muted px-3 py-2">
+      <p className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
       {children}
     </div>
   );
@@ -86,11 +91,11 @@ function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[];
 
   if (!account || !details) {
     return (
-      <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-        <p className="text-xs text-amber-300">
-          No {matchCurrency.toUpperCase()} virtual account found. Create one in the Accounts page first, then come back to get deposit details.
-        </p>
-      </div>
+      <Alert
+        variant="warning"
+        title={`No ${matchCurrency.toUpperCase()} account found`}
+        description="Create one from Accounts, then return to view deposit details."
+      />
     );
   }
 
@@ -118,11 +123,11 @@ function FiatDepositDetails({ accounts, rail }: { accounts: AppVirtualAccount[];
         </DepositSection>
       )}
 
-      <div className="mt-1 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-        <p className="text-xs text-amber-300">
-          Deposited funds will be automatically converted to stablecoins and credited to your Stablon balance.
-        </p>
-      </div>
+      <Alert
+        variant="warning"
+        title="Automatic conversion"
+        description="Deposited funds will be converted to stablecoins and credited to your balance."
+      />
     </div>
   );
 }
@@ -162,19 +167,19 @@ function CryptoDepositDetails({
         {wallet ? (
           <>
             <CopyField label={`${chainData.name} Address`} value={wallet.address} />
-            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-              <p className="text-xs text-amber-300">
-                Only send supported tokens on the selected network. Sending other assets may result in permanent loss.
-              </p>
-            </div>
+            <Alert
+              variant="warning"
+              title="Use the selected network"
+              description="Only send supported tokens on this network. Other assets may be permanently lost."
+            />
           </>
         ) : (
           <div className="space-y-3">
-            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/5">
-              <p className="text-sm text-white/70">
+            <div className="rounded-md border border-border bg-surface-muted p-4">
+              <p className="text-sm text-foreground">
                 You don&apos;t have a {chainData.name} deposit wallet yet.
               </p>
-              <p className="text-xs text-white/40 mt-1">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Generate one to get a permanent on-chain address for receiving {chainData.tokens.join(" / ")}.
               </p>
             </div>
@@ -186,12 +191,11 @@ function CryptoDepositDetails({
               )}
             </Button>
             {(genError || walletsError) && (
-              <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                <p className="text-xs text-red-300">
-                  {genError ||
-                    "We couldn't load your wallets from Bridge. Your account may need additional approval to create custodial wallets — contact your Bridge representative."}
-                </p>
-              </div>
+              <Alert
+                variant="danger"
+                title="Deposit address unavailable"
+                description={genError || "We couldn't load your wallets. Your account may require additional approval."}
+              />
             )}
           </div>
         )}
@@ -214,47 +218,43 @@ export default function DepositPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Deposit Funds</h1>
-        <p className="text-white/50 mt-1">Add money via bank transfer or crypto deposit</p>
-      </div>
+      <PageHeader title="Deposit funds" description="Add money by bank transfer or on-chain deposit." />
 
-      <div className="flex gap-3">
-        <Button
-          variant={method === "fiat" ? "default" : "outline"}
-          onClick={() => { setMethod("fiat"); setSelectedRail("ach"); }}
-          className="flex-1 sm:flex-none"
-        >
-          <Landmark className="w-4 h-4" /> Bank Transfer
-        </Button>
-        <Button
-          variant={method === "crypto" ? "default" : "outline"}
-          onClick={() => { setMethod("crypto"); setSelectedChain("ethereum"); }}
-          className="flex-1 sm:flex-none"
-        >
-          <Wallet className="w-4 h-4" /> On-Chain
-        </Button>
-      </div>
+      <SegmentedControl
+        label="Deposit method"
+        value={method}
+        onChange={(value) => {
+          const next = value as DepositMethod;
+          setMethod(next);
+          if (next === "fiat") setSelectedRail("ach");
+          else setSelectedChain("ethereum");
+        }}
+        options={[
+          { value: "fiat", label: "Bank transfer", icon: <Landmark className="h-4 w-4" /> },
+          { value: "crypto", label: "On-chain", icon: <Wallet className="h-4 w-4" /> },
+        ]}
+        className="w-full sm:w-auto"
+      />
 
       {method === "fiat" && (
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <h2 className="text-sm font-medium text-white/60">Select Payment Rail</h2>
+            <h2 className="text-sm font-medium text-foreground">Select payment rail</h2>
             {fiatRails.map((rail) => (
               <button
                 key={rail.id}
                 onClick={() => setSelectedRail(rail.id)}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                  selectedRail === rail.id ? "border-purple-500/50 bg-purple-500/5" : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                className={`flex w-full items-center justify-between rounded-md border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
+                  selectedRail === rail.id ? "border-primary bg-info-muted" : "border-border bg-surface hover:bg-surface-muted"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
-                    <Globe className="w-4 h-4 text-white/50" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-subtle">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium text-white">{rail.name}</p>
-                    <p className="text-xs text-white/40">{rail.region} &middot; {rail.currency}</p>
+                    <p className="text-sm font-medium text-foreground">{rail.name}</p>
+                    <p className="text-xs text-muted-foreground">{rail.region} &middot; {rail.currency}</p>
                   </div>
                 </div>
                 <Badge variant="secondary">{rail.speed}</Badge>
@@ -273,12 +273,9 @@ export default function DepositPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="flex items-center justify-center h-64 rounded-2xl border border-dashed border-white/10">
-                <div className="text-center">
-                  <ArrowDownToLine className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">Select a payment rail to see deposit instructions</p>
-                </div>
-              </div>
+              <DataView className="border-dashed shadow-none">
+                <DataState title="Select a payment rail" description="Deposit instructions will appear here." />
+              </DataView>
             )}
           </div>
         </div>
@@ -287,25 +284,25 @@ export default function DepositPage() {
       {method === "crypto" && (
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <h2 className="text-sm font-medium text-white/60">Select Blockchain</h2>
+            <h2 className="text-sm font-medium text-foreground">Select blockchain</h2>
             {cryptoChains.map((chain) => (
               <button
                 key={chain.id}
                 onClick={() => setSelectedChain(chain.id)}
-                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                  selectedChain === chain.id ? "border-purple-500/50 bg-purple-500/5" : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                className={`flex w-full items-center justify-between rounded-md border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
+                  selectedChain === chain.id ? "border-primary bg-info-muted" : "border-border bg-surface hover:bg-surface-muted"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-sm font-bold text-white/60">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-subtle text-sm font-semibold text-muted-foreground">
                     {chain.name.charAt(0)}
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium text-white">{chain.name}</p>
-                    <p className="text-xs text-white/40">{chain.tokens.join(", ")}</p>
+                    <p className="text-sm font-medium text-foreground">{chain.name}</p>
+                    <p className="text-xs text-muted-foreground">{chain.tokens.join(", ")}</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/20" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
             ))}
           </div>
@@ -318,12 +315,9 @@ export default function DepositPage() {
                 walletsError={Boolean(walletsError)}
               />
             ) : (
-              <div className="flex items-center justify-center h-64 rounded-2xl border border-dashed border-white/10">
-                <div className="text-center">
-                  <Wallet className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">Select a blockchain to see your deposit address</p>
-                </div>
-              </div>
+              <DataView className="border-dashed shadow-none">
+                <DataState title="Select a blockchain" description="Your deposit address will appear here." />
+              </DataView>
             )}
           </div>
         </div>

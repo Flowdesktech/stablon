@@ -411,10 +411,11 @@ export async function getTotalWalletBalances(): Promise<
 
 // ─── Transfers / Orchestration ───────────────────────────────
 
-export async function createTransfer(data: {
+export interface BridgeTransferCreateInput {
   amount: string;
   on_behalf_of: string;
   developer_fee?: string;
+  developer_fee_percent?: string;
   source: {
     payment_rail: string;
     currency: string;
@@ -428,9 +429,17 @@ export async function createTransfer(data: {
     to_address?: string;
     bridge_wallet_id?: string;
   };
-}): Promise<BridgeTransfer> {
+}
+
+export async function createTransfer(
+  data: BridgeTransferCreateInput,
+  options?: { idempotencyKey?: string }
+): Promise<BridgeTransfer> {
   return bridgeFetch<BridgeTransfer>("/transfers", {
     method: "POST",
+    headers: options?.idempotencyKey
+      ? { "Idempotency-Key": options.idempotencyKey }
+      : undefined,
     body: JSON.stringify(data),
   });
 }

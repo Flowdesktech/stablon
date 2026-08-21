@@ -1,297 +1,252 @@
 # Stablon
 
-A full-stack stablecoin banking experience built on [Bridge.xyz](https://bridge.xyz) API infrastructure. Deposit fiat, hold stablecoins, spend with a Visa card, swap currencies, and earn yield — all from one app.
+Stablon is a Next.js application for business payments and invoicing. It combines
+provider-backed money accounts and transfer workflows with client management,
+professional PDF invoices, email delivery, recurring schedules, public payment
+checkout, and payment reconciliation.
 
-> This project recreates a similar product surface for development and demonstration, and is not affiliated with any existing brand.
+Payment availability depends on Bridge account eligibility, verification,
+jurisdiction, currency, and current provider support.
 
----
+## Capabilities
 
-## Table of Contents
+- Supported USD, EUR, and GBP money accounts and local payment rails
+- Bank and stablecoin deposit, withdrawal, conversion, and transaction workflows
+- Firebase email/password authentication, server sessions, optional TOTP 2FA, and app lock
+- Client records and business invoice profiles
+- Itemized invoices with taxes, discounts, terms, due dates, and 15 PDF designs
+- Resend email delivery with PDF attachments and secure public invoice links
+- Weekly, biweekly, monthly, quarterly, and yearly recurring invoice schedules
+- Bridge-powered invoice checkout and verified webhook reconciliation
+- Public, rate-limited PDF invoice generator that does not store invoice data
+- Super-admin user, wallet, transaction, and impersonation tools
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Security & Authentication](#security--authentication)
-- [Project Structure](#project-structure)
-- [API Reference](#api-reference)
-- [Bridge.xyz Integration](#bridgexyz-integration)
-- [Deploying to Vercel](#deploying-to-vercel)
-- [Continuous Deployment (GitHub Actions)](#continuous-deployment-github-actions)
-- [License](#license)
+## Architecture
 
----
+- Next.js 16 App Router, React 19, TypeScript, and Tailwind CSS 4
+- Firebase Authentication and Cloud Firestore
+- Firebase Admin SDK for all server-side data access
+- Bridge REST API for customers, verification, accounts, transfers, cards, and settlement
+- `@react-pdf/renderer` for server-side PDF generation
+- Resend for contact and invoice email
+- Vercel Cron for recurring invoice generation
 
-## Features
+Bridge credentials, Firebase Admin credentials, encryption keys, and webhook
+verification stay server-side. Firestore client access is denied by the included
+rules; application data is accessed through authorized server routes.
 
-### Money movement
-- **Global Accounts** — USD and EUR virtual bank accounts with local payment rails (ACH, Wire, SEPA, PIX, SPEI, Faster Payments).
-- **Deposit / On-Ramp** — Fund via **bank transfer** or **on-chain** crypto deposits across 10+ blockchains.
-- **Withdraw / Off-Ramp** — Cash out **to a bank account** or send **on-chain** to any external wallet (Ethereum, Solana, Polygon, Arbitrum, Base, Optimism, Avalanche).
-- **Swap** — Instant conversion between fiat and crypto currencies.
-- **Visa Card** — Spend stablecoins at 200M+ merchants; freeze/unfreeze instantly.
-- **Earn** — Up to 5% APY on USDB stablecoin balances.
+## Prerequisites
 
-### Account & onboarding
-- **Firebase Authentication** — Email/password sign-up and sign-in; the Firebase user is exchanged for an httpOnly session cookie for server-side authorization.
-- **Auto customer linking** — A Bridge customer is created automatically at registration (best-effort), so users can start onboarding immediately.
-- **KYC / Identity** — Built-in verification flow powered by Bridge, with graceful handling of existing/duplicate KYC links.
-- **Feature gating** — Money-moving pages are locked (client- and server-side) until KYC is approved, with clear prompts to verify.
+- Node.js 20.9 or newer
+- npm
+- Firebase project with Email/Password Authentication and Firestore enabled
+- Bridge API credentials
+- Optional: Resend account for email delivery
+- Optional: NOWPayments credentials if virtual-account setup fees are enabled
 
-### Security
-- **Two-Factor Authentication (2FA)** — TOTP enrollment via any authenticator app (Google Authenticator, 1Password, Authy), enforced as a post-sign-in gate before the session cookie is issued.
-- **Recovery codes** — One-time backup codes issued at enrollment for account recovery.
-- **Encrypted secrets** — TOTP secrets are encrypted at rest (AES-256-GCM) in Firestore.
-- **Password management** — Self-service password change via Firebase reauthentication.
-
-### UX
-- **Toast notifications** — Consistent success/error feedback across all money-moving actions.
-- **Responsive dashboard** — Modern, dark-themed UI with mobile navigation.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS v4 |
-| UI Components | Custom shadcn/ui-style components + Radix primitives |
-| Data fetching | SWR |
-| Database | Cloud Firestore (via Firebase Admin SDK) |
-| Auth | Firebase Authentication (email/password) + httpOnly session cookies |
-| 2FA | otplib (TOTP) + qrcode |
-| API | Bridge.xyz REST API |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- A [Firebase project](https://console.firebase.google.com) with **Email/Password** authentication enabled and a **Firestore** database
-- A [Bridge.xyz](https://dashboard.bridge.xyz) API key
-
-### Setup
+## Local setup
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env — add your Firebase web config, a Firebase Admin service account,
-# your Bridge API key, and an APP_SECRET (see below)
-
-# 3. Start the dev server
+cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+PowerShell:
 
-**Firebase setup:**
-
-- **Web config** (`NEXT_PUBLIC_FIREBASE_*`) — Firebase console → Project settings → *Your apps* → Web app.
-- **Admin credentials** (`FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY`) — Project settings → *Service accounts* → **Generate new private key**. Keep the private key's newlines escaped as `\n` in the env var.
-- **Enable Email/Password** — Authentication → Sign-in method.
-- **Deploy Firestore rules** (all access is server-side via Admin, so client access is denied): `npx -y firebase-tools@latest deploy --only firestore:rules`.
-
-> **Tip:** generate `APP_SECRET` with `openssl rand -base64 32` (or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`). Keep it stable — rotating it makes existing encrypted 2FA secrets undecryptable.
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Firebase web API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Firebase auth domain (`<project>.firebaseapp.com`) |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | No | Firebase storage bucket |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | No | Firebase messaging sender ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | Firebase web app ID |
-| `FIREBASE_PROJECT_ID` | Yes | Service account project ID |
-| `FIREBASE_CLIENT_EMAIL` | Yes | Service account client email |
-| `FIREBASE_PRIVATE_KEY` | Yes | Service account private key (newlines escaped as `\n`) |
-| `APP_SECRET` | Yes | Key material for at-rest encryption of 2FA secrets |
-| `BRIDGE_API_KEY` | Yes | Your Bridge.xyz API key |
-| `BRIDGE_API_URL` | No | Bridge API base URL (default: `https://api.bridge.xyz/v0`) |
-
----
-
-## Security & Authentication
-
-- **Sessions** — After signing in with Firebase, the client exchanges its Firebase ID token for a long-lived, httpOnly **session cookie** minted by the Firebase Admin SDK (`POST /api/auth/session`). Every protected API verifies this cookie server-side.
-- **2FA (TOTP)** — When enabled, the session cookie is only issued after a valid 6-digit code (or single-use **recovery code**) is verified — so a Firebase sign-in alone can't unlock the app.
-- **Secret encryption** — TOTP secrets are stored encrypted (AES-256-GCM) in Firestore using a key derived from `APP_SECRET`. The pending secret only becomes active after the first code is verified.
-- **Server-side KYC enforcement** — Mutating Bridge routes require an authenticated user that is both linked to a Bridge customer and KYC-approved (`requireVerifiedCustomer`), so client-side gating can't be bypassed.
-- **Locked-down Firestore** — All Firestore access goes through the Admin SDK; `firestore.rules` denies direct client access entirely.
-- **Idempotency** — All Bridge `POST` requests automatically include an `Idempotency-Key`.
-
----
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── (auth)/                 # Login and registration pages
-│   ├── (dashboard)/            # Authenticated app (gated by KYC)
-│   │   ├── dashboard/          # Overview + account setup banner
-│   │   ├── accounts/           # Global USD/EUR accounts
-│   │   ├── deposit/            # On-ramp (bank + on-chain)
-│   │   ├── withdraw/           # Off-ramp (bank + on-chain)
-│   │   ├── card/               # Visa card management
-│   │   ├── swap/               # Currency conversion
-│   │   ├── earn/               # Yield and rewards
-│   │   └── settings/           # Profile, KYC, security (password + 2FA)
-│   └── api/
-│       ├── auth/session/       # Exchange Firebase ID token ↔ session cookie
-│       ├── register/           # Persist profile + auto Bridge customer
-│       ├── customers/          # Link/get Bridge customer
-│       ├── kyc/                # KYC link creation
-│       ├── account/
-│       │   └── 2fa/            # 2FA status, setup, verify, disable
-│       ├── wallets/ accounts/ transfers/ external-accounts/
-│       ├── cards/              # Provision + freeze/unfreeze + transactions
-│       ├── rates/ rewards/     # Exchange rates and yield
-├── components/
-│   ├── ui/                     # Button, Card, Dialog, Input, Badge, Toast…
-│   ├── layout/                 # Sidebar, FeatureGuard (KYC gate)
-│   ├── settings/               # SecuritySection (password + 2FA dialogs)
-│   └── auth-provider.tsx       # Firebase auth state context (useAuth)
-├── hooks/
-│   └── use-bridge.ts           # SWR hooks + action helpers (with toasts)
-├── lib/
-│   ├── firebase/
-│   │   ├── client.ts           # Firebase web SDK (lazy, browser-only)
-│   │   ├── admin.ts            # Firebase Admin SDK (lazy, server-only)
-│   │   ├── server-auth.ts      # Verify session cookie → current user
-│   │   └── auth-actions.ts     # Sign-in/up/out, password change (client)
-│   ├── bridge.ts               # Bridge.xyz API client (+ idempotency)
-│   ├── users.ts                # Firestore users/{uid} document helpers
-│   ├── crypto.ts               # AES-256-GCM secret encryption
-│   ├── totp.ts                 # TOTP generation/verification
-│   ├── recovery-codes.ts       # Backup code generation/consumption
-│   ├── api-guards.ts           # Auth + KYC route guards
-│   ├── feature-access.ts       # Gated-route config
-│   └── utils.ts                # Helpers and formatters
-├── proxy.ts                    # Route protection (session-cookie presence)
-└── types/
-    └── bridge.ts               # Bridge API TypeScript types
+```powershell
+npm install
+Copy-Item .env.example .env.local
+npm run dev
 ```
 
----
+Open `http://localhost:3000`.
 
-## API Reference
+Generate a stable `APP_SECRET` before creating users with 2FA:
 
-All routes are server-side and require an authenticated session unless noted.
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
 
-### Auth & account
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/auth/session` | Exchange a Firebase ID token for a session cookie (enforces 2FA) |
-| `DELETE` | `/api/auth/session` | Clear the session cookie (sign out) |
-| `POST` | `/api/register` | Persist profile after sign-up (also links a Bridge customer) |
-| `GET` | `/api/account/2fa` | Get 2FA enabled status |
-| `POST` | `/api/account/2fa/setup` | Begin 2FA enrollment (returns QR + secret) |
-| `POST` | `/api/account/2fa/verify` | Verify code, enable 2FA, return recovery codes |
-| `POST` | `/api/account/2fa/disable` | Disable 2FA (TOTP or recovery code) |
+Do not rotate this value without a migration. It encrypts TOTP secrets stored in
+Firestore, so changing it invalidates existing encrypted values.
 
-> Password changes happen client-side through Firebase (`reauthenticate` + `updatePassword`), not via an API route.
+## Environment variables
 
-### Bridge / money (KYC-approved only for `POST`)
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET/POST` | `/api/customers` | Get / create Bridge customer |
-| `POST` | `/api/kyc` | Create a KYC verification link |
-| `GET/POST` | `/api/wallets` | List / create custodial wallets |
-| `GET/POST` | `/api/accounts` | List / create virtual bank accounts |
-| `GET/POST` | `/api/transfers` | List / create transfers (on/off-ramp, on-chain) |
-| `GET/POST` | `/api/external-accounts` | List / add external bank accounts |
-| `GET/POST` | `/api/cards` | List / provision Visa cards |
-| `POST` | `/api/cards/[cardId]/freeze` · `/unfreeze` | Freeze / unfreeze a card |
-| `GET` | `/api/cards/[cardId]/transactions` | Card transaction history |
-| `GET` | `/api/rates` | Exchange rate quotes |
-| `GET` | `/api/rewards` · `/api/rewards/history` | Yield summary and history |
+Start from `.env.example`, which documents defaults and feature-specific values.
 
----
+### Required application configuration
 
-## Bridge.xyz Integration
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Authentication domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase web project ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase web application ID |
+| `FIREBASE_PROJECT_ID` | Firebase Admin service-account project ID |
+| `FIREBASE_CLIENT_EMAIL` | Firebase Admin service-account email |
+| `FIREBASE_PRIVATE_KEY` | Firebase Admin private key with newlines escaped as `\n` |
+| `APP_SECRET` | Stable encryption key material for protected account secrets |
+| `BRIDGE_API_KEY` | Bridge server API key |
 
-The platform wraps the following Bridge API products:
+The optional Firebase web values `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` and
+`NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` can be copied from the same Firebase
+web-app configuration.
 
-| Product | Usage |
-|---------|-------|
-| Customers | Create, get, update customers with KYC |
-| Wallets | Create custodial wallets, check balances |
-| Transfers | On-ramp, off-ramp, and crypto-to-crypto/on-chain flows |
-| Virtual Accounts | USD/EUR bank accounts with local rails |
-| External Accounts | Linked bank accounts for withdrawals |
-| Cards | Provision Visa cards, freeze/unfreeze |
-| Exchange Rates | Real-time rate quotes |
-| Rewards | USDB yield tracking |
+### URLs and Bridge behavior
 
-All Bridge API calls are made server-side through Next.js API routes, keeping your API key secure. Every `POST` is sent with an `Idempotency-Key`.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Production | Canonical URL for metadata, sitemap, and public links |
+| `NEXT_PUBLIC_APP_URL` | Payment setup | Public callback base URL |
+| `BRIDGE_API_URL` | No | Bridge API base; defaults to `https://api.bridge.xyz/v0` |
+| `BRIDGE_ONRAMP_ADDRESS` | No | Default on-chain destination for virtual-account on-ramps |
+| `BRIDGE_DEVELOPER_FEE_PERCENT` | No | Incoming virtual-account deposit fee |
+| `NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT` | No | UI mirror; keep equal to the server value |
 
----
+### Invoice checkout and reconciliation
 
-## Deploying to Vercel
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `BRIDGE_WEBHOOK_PUBLIC_KEY` | Checkout | Endpoint-specific RSA public key used to verify Bridge webhooks |
+| `INVOICE_DEVELOPER_FEE_PERCENT` | No | Optional invoice settlement fee percentage from 0 to 10 |
+| `INVOICE_BASE_URL` | Recurring email | Canonical base URL used in generated invoice links |
 
-The Next.js app is hosted on **Vercel**; **Firebase** provides Auth + Firestore. State lives in Firebase, so there's no database to provision on Vercel — you only supply credentials as environment variables.
+### Email delivery
 
-### 1. Prepare Firebase
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `RESEND_API_KEY` | Email | Resend API key shared by contact and invoice delivery |
+| `INVOICE_FROM_EMAIL` | Invoice email | Verified invoice sender identity |
+| `CONTACT_FROM_EMAIL` | Contact form | Verified contact-form sender identity |
+| `CONTACT_TO_EMAIL` | Contact form | Support inbox |
 
-- Enable **Email/Password** sign-in (Authentication → Sign-in method).
-- Create a **Firestore** database.
-- Deploy the locked-down rules: `npx -y firebase-tools@latest deploy --only firestore:rules` (or let the [GitHub Action](#continuous-deployment-github-actions) do it).
-- After your first deploy, add your Vercel domain under Authentication → **Settings → Authorized domains**.
+### Recurring invoices and anonymous PDFs
 
-### 2. Import the project into Vercel
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `CRON_SECRET` | Recurring billing | Bearer secret for `/api/cron/recurring-invoices` |
+| `INVOICE_GENERATOR_RATE_LIMIT` | No | Anonymous PDF requests per IP each hour |
+| `INVOICE_RATE_LIMIT_SALT` | Recommended | Independent random salt for anonymous IP hashes |
 
-Choose one:
+### Optional virtual-account setup billing
 
-- **Git integration (recommended):** In the [Vercel dashboard](https://vercel.com/new), *Add New → Project* and import your Git repo. Vercel auto-detects Next.js — no build settings needed. Every push to the production branch deploys automatically; PRs get preview deployments.
-- **CLI:** `npm i -g vercel`, then run `vercel` (preview) or `vercel --prod` from the project root.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NOWPAYMENTS_API_KEY` | Setup billing | NOWPayments API key |
+| `NOWPAYMENTS_IPN_SECRET` | Setup billing | NOWPayments callback signature secret |
+| `NOWPAYMENTS_API_URL` | No | Override for sandbox testing |
+| `VIRTUAL_ACCOUNT_FEE_USD` | No | Server-side one-time setup fee |
+| `NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD` | No | UI mirror; keep equal to the server value |
 
-### 3. Configure Vercel environment variables
+## Firebase setup
 
-In your Vercel project → **Settings → Environment Variables**, add every variable from the [Environment Variables](#environment-variables) table:
+1. Enable Email/Password in Firebase Authentication.
+2. Create a Cloud Firestore database.
+3. Create a web application and copy its public configuration.
+4. Create a service-account key for the Firebase Admin values.
+5. Add local and deployed domains to Authentication → Authorized domains.
+6. Deploy the included rules and indexes:
 
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_FIREBASE_*` | Your Firebase web config values |
-| `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` | Service account credentials (keep `\n` escapes in the private key) |
-| `APP_SECRET` | a stable secret (`openssl rand -base64 32`) |
-| `BRIDGE_API_KEY` | your Bridge API key |
-| `BRIDGE_API_URL` | `https://api.bridge.xyz/v0` (optional) |
+```bash
+npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes
+```
 
-### 4. Deploy
+The rules intentionally deny direct client reads and writes. Do not loosen them
+unless the application is redesigned to enforce equivalent per-document access.
 
-Redeploy (Git integration deploys on push; or run `vercel --prod`). The default `next build` is used; `firebase-admin` is marked as server-external in `next.config.ts`.
+## Invoice lifecycle
 
-> **Important:** `APP_SECRET` must stay stable across deploys — rotating it makes existing encrypted 2FA secrets undecryptable (affected users would need to re-enroll). When pasting `FIREBASE_PRIVATE_KEY` into Vercel, keep the newlines escaped as `\n`.
+1. Configure an invoice business profile and default template.
+2. Add a client.
+3. Create a draft with line items, tax, discount, terms, currency, and due date.
+4. Preview or download the PDF. Each invoice stores its selected design.
+5. Send the invoice through Resend or share its unguessable public link.
+6. For an eligible, verified sender, create a public checkout for the outstanding amount.
+7. Reconcile Bridge transfer webhooks; completed transfers mark the linked invoice paid.
+8. Void, duplicate, or update invoices as the business workflow requires.
 
----
+Recurring schedules generate separate invoices with unique numbers. They do not
+reuse a previous invoice document.
 
-## Continuous Deployment (GitHub Actions)
+## Bridge webhook
 
-`.github/workflows/deploy-firestore.yml` deploys the Firestore **security rules and indexes** to Firebase on every push to `main` that touches `firestore.rules`, `firestore.indexes.json`, or `firebase.json` (and can be run manually via *workflow_dispatch*). The Next.js app itself is deployed by Vercel's Git integration, not this workflow.
+Create a Bridge webhook endpoint for:
 
-Configure these in your repo → **Settings → Secrets and variables → Actions**:
+```text
+https://your-domain.com/api/webhooks/bridge
+```
 
-| Name | Kind | Value |
-|------|------|-------|
-| `FIREBASE_SERVICE_ACCOUNT` | Secret | The full JSON of a service account key with permission to deploy Firestore rules (Firebase console → Project settings → *Service accounts* → **Generate new private key**) |
-| `FIREBASE_PROJECT_ID` | Variable | Your Firebase project ID |
+Subscribe it to transfer events. Copy the endpoint's PEM `public_key` into
+`BRIDGE_WEBHOOK_PUBLIC_KEY`, preserving newlines as `\n` in hosted environment
+variables. Test delivery before enabling production traffic.
 
-The workflow writes the service account JSON to a temp file, points `GOOGLE_APPLICATION_CREDENTIALS` at it, and runs `firebase deploy --only firestore`.
+The handler verifies Bridge's RSA signature against the raw request body, rejects
+stale events, and processes updates idempotently. Do not place this route behind a
+proxy that rewrites the request body.
 
-> Prefer to host the app on Firebase instead of Vercel? Firebase **App Hosting** supports Next.js SSR — see the [App Hosting docs](https://firebase.google.com/docs/app-hosting). That's a separate setup from this rules-only workflow.
+## Resend invoice delivery
 
----
+1. Verify the sending domain in Resend.
+2. Set `RESEND_API_KEY`.
+3. Set `INVOICE_FROM_EMAIL`, for example
+   `Stablon Invoices <invoices@example.com>`.
+4. Set `INVOICE_BASE_URL` to the production application URL.
+5. Send a test invoice and confirm both the PDF attachment and public link.
+
+The business profile billing address is used for replies where configured.
+
+## Recurring invoice cron
+
+`vercel.json` runs the scheduler daily at `05:00 UTC`:
+
+```text
+GET /api/cron/recurring-invoices
+Authorization: Bearer <CRON_SECRET>
+```
+
+Set `CRON_SECRET` in every production environment that can invoke the route.
+Monitor function logs for generation or delivery failures. A generated invoice
+can still exist when optional email delivery fails.
+
+## Verification
+
+Run the same checks before deployment:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Tests cover invoice calculations, schemas, recurring generation, public-token
+security, Bridge webhook verification, and PDF rendering across all 15 templates.
+
+## Vercel deployment
+
+1. Import the repository into Vercel.
+2. Add the required and feature-specific environment variables.
+3. Set `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL`, and `INVOICE_BASE_URL` to the production URL.
+4. Keep `APP_SECRET` stable across deploys.
+5. Deploy Firestore rules and indexes.
+6. Add the production domain to Firebase Authorized domains.
+7. Configure the Bridge webhook and Resend sender.
+8. Confirm the recurring cron has access to `CRON_SECRET`.
+9. Run a production invoice checkout and webhook test with provider test credentials before enabling users.
+
+Next.js uses the standard `npm run build` command. The application is stateful
+through Firebase; Vercel does not need a separate database.
+
+## Operational security
+
+- Every protected route verifies the Firebase session cookie server-side.
+- Regulated payment mutations require an eligible, verified Bridge customer.
+- Bridge write requests include idempotency keys.
+- Public invoice tokens are unguessable and stored protected.
+- Payment webhooks are signature-verified before reconciliation.
+- TOTP secrets are encrypted with key material derived from `APP_SECRET`.
+- Secrets and service-account values must never use the `NEXT_PUBLIC_` prefix.
 
 ## License
 

@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { PageHeader, StatCard } from "@/components/ui/page";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +30,6 @@ import {
 } from "@/lib/admin-actions";
 import {
   Users,
-  Inbox,
   Loader2,
   ShieldCheck,
   MoreHorizontal,
@@ -37,6 +38,8 @@ import {
   LogIn,
   Ban,
   CircleCheck,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 interface AdminUser {
@@ -81,6 +84,8 @@ export function AdminUsersTable() {
   );
   const { profile } = useProfile();
   const users = data?.data ?? [];
+  const approvedUsers = users.filter((user) => user.kycStatus === "approved").length;
+  const disabledUsers = users.filter((user) => user.loginDisabled).length;
 
   const [viewUser, setViewUser] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -122,7 +127,8 @@ export function AdminUsersTable() {
         description: `You are now browsing as ${user.email}.`,
       });
       // Hard reload so every cached hook re-fetches under the new session.
-      window.location.href = "/dashboard";
+      window.history.replaceState(null, "", "/dashboard");
+      window.location.reload();
     } catch (err) {
       toast({
         variant: "error",
@@ -157,174 +163,109 @@ export function AdminUsersTable() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-          <Users className="w-5 h-5 text-purple-300" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Users</h1>
-          <p className="text-white/50 mt-0.5">
-            {isLoading
-              ? "Loading…"
-              : `${users.length} registered user${users.length === 1 ? "" : "s"}`}
-          </p>
-        </div>
+    <div className="animate-fade-in space-y-6">
+      <PageHeader
+        title="Users"
+        description="Review customer verification, security, and account access across the platform."
+      />
+
+      <div
+        className="grid gap-4 sm:grid-cols-3"
+        role="group"
+        aria-label="User summary"
+      >
+        <StatCard
+          label="Registered users"
+          value={isLoading || error ? "—" : users.length}
+          detail="All platform accounts"
+          icon={<Users className="h-5 w-5" aria-hidden="true" />}
+        />
+        <StatCard
+          label="KYC approved"
+          value={isLoading || error ? "—" : approvedUsers}
+          detail="Verified customers"
+          icon={<UserCheck className="h-5 w-5 text-success" aria-hidden="true" />}
+        />
+        <StatCard
+          label="Login disabled"
+          value={isLoading || error ? "—" : disabledUsers}
+          detail="Restricted accounts"
+          icon={<UserX className="h-5 w-5 text-danger" aria-hidden="true" />}
+        />
       </div>
 
-      {error ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-red-300">
-            {error.message}
-          </CardContent>
-        </Card>
-      ) : isLoading ? (
-        <div className="flex items-center justify-center py-16 text-white/40">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
-      ) : users.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center gap-3 text-center">
-            <Inbox className="w-8 h-8 text-white/20" />
-            <p className="text-white/50 text-sm">No users yet.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5 text-left text-xs uppercase tracking-wide text-white/40">
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">KYC</th>
-                  <th className="px-4 py-3 font-medium">Security</th>
-                  <th className="px-4 py-3 font-medium">Bridge customer</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => {
-                  const isSelf = u.uid === profile?.uid;
-                  return (
-                    <tr
-                      key={u.uid}
-                      className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="text-white font-medium flex items-center gap-1.5">
-                          {u.name || u.email.split("@")[0]}
-                          {u.superAdmin && (
-                            <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
-                          )}
-                        </p>
-                        <p className="text-xs text-white/40">{u.email}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={kycVariant(u.kycStatus)}>{u.kycStatus}</Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          {u.loginDisabled && (
-                            <Badge variant="danger">Login disabled</Badge>
-                          )}
-                          {u.twoFactorEnabled && <Badge variant="secondary">2FA</Badge>}
-                          {u.appLockEnabled && (
-                            <Badge variant="secondary">Passcode</Badge>
-                          )}
-                          {!u.loginDisabled &&
-                            !u.twoFactorEnabled &&
-                            !u.appLockEnabled && (
-                              <span className="text-white/30 text-xs">—</span>
-                            )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {u.bridgeCustomerId ? (
-                          <span className="font-mono text-xs text-white/60">
-                            {u.bridgeCustomerId}
-                          </span>
-                        ) : (
-                          <span className="text-white/30 text-xs">Not linked</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-white/50 text-xs whitespace-nowrap">
-                        {u.createdAt
-                          ? new Date(u.createdAt).toLocaleDateString()
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isSelf || impersonatingUid !== null}
-                            title={
-                              isSelf
-                                ? "You're already this user"
-                                : "Sign in as this user"
-                            }
-                            onClick={() => handleImpersonate(u)}
-                          >
-                            {impersonatingUid === u.uid ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <LogIn className="w-3.5 h-3.5" />
-                            )}
-                            Log in as user
-                          </Button>
+      <DataView>
+        {error ? (
+          <DataState
+            kind="error"
+            title="Users could not be loaded"
+            description={error.message}
+            onRetry={() => mutate()}
+          />
+        ) : isLoading ? (
+          <DataState
+            kind="loading"
+            title="Loading users"
+            description="Retrieving customer accounts and security status."
+          />
+        ) : users.length === 0 ? (
+          <DataState
+            title="No users yet"
+            description="Registered customer accounts will appear here."
+          />
+        ) : (
+          <>
+            <div className="divide-y divide-border md:hidden">
+              {users.map((user) => (
+                <UserMobileCard
+                  key={user.uid}
+                  user={user}
+                  isSelf={user.uid === profile?.uid}
+                  impersonatingUid={impersonatingUid}
+                  togglingUid={togglingUid}
+                  onView={setViewUser}
+                  onToggleLogin={handleToggleLogin}
+                  onImpersonate={handleImpersonate}
+                  onDelete={setDeleteTarget}
+                />
+              ))}
+            </div>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer outline-none"
-                                aria-label="Open actions menu"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onSelect={() => setViewUser(u)}>
-                                <Eye className="w-4 h-4" /> View
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={isSelf || togglingUid !== null}
-                                onSelect={() => {
-                                  if (!isSelf) handleToggleLogin(u);
-                                }}
-                              >
-                                {u.loginDisabled ? (
-                                  <>
-                                    <CircleCheck className="w-4 h-4" /> Enable login
-                                  </>
-                                ) : (
-                                  <>
-                                    <Ban className="w-4 h-4" /> Disable login
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="danger"
-                                disabled={isSelf}
-                                onSelect={() => {
-                                  if (!isSelf) setDeleteTarget(u);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[960px] text-sm">
+                <caption className="sr-only">
+                  Registered users, verification, security, and account actions
+                </caption>
+                <thead className="bg-surface-muted">
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th scope="col" className="px-4 py-3 font-medium">User</th>
+                    <th scope="col" className="px-4 py-3 font-medium">KYC</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Security</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Bridge customer</th>
+                    <th scope="col" className="px-4 py-3 font-medium">Joined</th>
+                    <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {users.map((user) => (
+                    <UserTableRow
+                      key={user.uid}
+                      user={user}
+                      isSelf={user.uid === profile?.uid}
+                      impersonatingUid={impersonatingUid}
+                      togglingUid={togglingUid}
+                      onView={setViewUser}
+                      onToggleLogin={handleToggleLogin}
+                      onImpersonate={handleImpersonate}
+                      onDelete={setDeleteTarget}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </DataView>
 
       {/* View details */}
       <Dialog open={!!viewUser} onOpenChange={(open) => !open && setViewUser(null)}>
@@ -385,11 +326,16 @@ export function AdminUsersTable() {
             <DialogTitle>Delete user?</DialogTitle>
             <DialogDescription>
               This permanently removes{" "}
-              <span className="text-white">{deleteTarget?.email}</span> and their
+              <span className="font-medium text-foreground">{deleteTarget?.email}</span> and their
               profile. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
+          <Alert
+            variant="danger"
+            title="Permanent account deletion"
+            description="The user profile and access will be removed immediately."
+          />
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               disabled={deleting}
@@ -429,13 +375,186 @@ function DetailLine({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-white/40">{label}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-border py-2 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
       <span
-        className={`text-white text-right break-all ${mono ? "font-mono text-xs" : ""}`}
+        className={`break-all text-right text-foreground ${mono ? "font-mono text-xs" : ""}`}
       >
         {value}
       </span>
     </div>
+  );
+}
+
+interface UserActionsProps {
+  user: AdminUser;
+  isSelf: boolean;
+  impersonatingUid: string | null;
+  togglingUid: string | null;
+  onView: (user: AdminUser) => void;
+  onToggleLogin: (user: AdminUser) => void;
+  onImpersonate: (user: AdminUser) => void;
+  onDelete: (user: AdminUser) => void;
+}
+
+function UserActions({
+  user,
+  isSelf,
+  impersonatingUid,
+  togglingUid,
+  onView,
+  onToggleLogin,
+  onImpersonate,
+  onDelete,
+}: UserActionsProps) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={isSelf || impersonatingUid !== null}
+        title={isSelf ? "You're already this user" : "Sign in as this user"}
+        onClick={() => onImpersonate(user)}
+      >
+        {impersonatingUid === user.uid ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        ) : (
+          <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
+        Log in as user
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="rounded-md p-2 text-muted-foreground outline-none transition-colors hover:bg-surface-subtle hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
+            aria-label={`Open actions for ${user.email}`}
+          >
+            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onSelect={() => onView(user)}>
+            <Eye className="h-4 w-4" aria-hidden="true" /> View details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={isSelf || togglingUid !== null}
+            onSelect={() => {
+              if (!isSelf) onToggleLogin(user);
+            }}
+          >
+            {user.loginDisabled ? (
+              <>
+                <CircleCheck className="h-4 w-4" aria-hidden="true" /> Enable login
+              </>
+            ) : (
+              <>
+                <Ban className="h-4 w-4" aria-hidden="true" /> Disable login
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="danger"
+            disabled={isSelf}
+            onSelect={() => {
+              if (!isSelf) onDelete(user);
+            }}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete user
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function UserSecurity({ user }: { user: AdminUser }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {user.loginDisabled && <Badge variant="danger">Login disabled</Badge>}
+      {user.twoFactorEnabled && <Badge variant="secondary">2FA</Badge>}
+      {user.appLockEnabled && <Badge variant="secondary">Passcode</Badge>}
+      {!user.loginDisabled && !user.twoFactorEnabled && !user.appLockEnabled && (
+        <span className="text-xs text-muted-foreground">No controls enabled</span>
+      )}
+    </div>
+  );
+}
+
+function UserTableRow(props: UserActionsProps) {
+  const { user } = props;
+  return (
+    <tr className="transition-colors hover:bg-surface-subtle">
+      <td className="px-4 py-3">
+        <p className="flex items-center gap-1.5 font-medium text-foreground">
+          {user.name || user.email.split("@")[0]}
+          {user.superAdmin && (
+            <>
+              <ShieldCheck className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
+              <span className="sr-only">Super admin</span>
+            </>
+          )}
+        </p>
+        <p className="text-xs text-muted-foreground">{user.email}</p>
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant={kycVariant(user.kycStatus)}>{user.kycStatus}</Badge>
+      </td>
+      <td className="px-4 py-3"><UserSecurity user={user} /></td>
+      <td className="px-4 py-3">
+        {user.bridgeCustomerId ? (
+          <span className="font-mono text-xs text-muted-foreground">
+            {user.bridgeCustomerId}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">Not linked</span>
+        )}
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+      </td>
+      <td className="px-4 py-3"><UserActions {...props} /></td>
+    </tr>
+  );
+}
+
+function UserMobileCard(props: UserActionsProps) {
+  const { user } = props;
+  return (
+    <article className="space-y-4 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-1.5 truncate font-medium text-foreground">
+            {user.name || user.email.split("@")[0]}
+            {user.superAdmin && (
+              <>
+                <ShieldCheck className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                <span className="sr-only">Super admin</span>
+              </>
+            )}
+          </h2>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+        </div>
+        <Badge variant={kycVariant(user.kycStatus)}>{user.kycStatus}</Badge>
+      </div>
+      <UserSecurity user={user} />
+      <dl className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <dt className="text-muted-foreground">Bridge customer</dt>
+          <dd className="mt-1 truncate font-mono text-foreground">
+            {user.bridgeCustomerId || "Not linked"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Joined</dt>
+          <dd className="mt-1 text-foreground">
+            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+          </dd>
+        </div>
+      </dl>
+      <UserActions {...props} />
+    </article>
   );
 }

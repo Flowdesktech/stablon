@@ -9,6 +9,7 @@ import {
   signOutUser,
 } from "@/lib/firebase/auth-actions";
 import { Button } from "@/components/ui/button";
+import { AuthShell } from "@/app/(auth)/auth-shell";
 import { ArrowRight, Loader2, MailCheck } from "lucide-react";
 
 export default function VerifyEmailPage() {
@@ -95,41 +96,61 @@ export default function VerifyEmailPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        <span className="inline-flex items-center gap-2 text-sm">
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+          Checking your account…
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 mb-6">
-          <MailCheck className="w-7 h-7 text-white" />
+    <AuthShell
+      eyebrow="Email verification"
+      title="Confirm your email address"
+      description="Verification helps protect account access and confirms where account notices should be sent."
+      footer={
+        <>
+          Wrong account?{" "}
+          <button onClick={handleSignOut} className="font-medium text-primary hover:underline">
+            Sign in with a different email
+          </button>
+        </>
+      }
+    >
+        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-info-muted">
+          <MailCheck className="h-5 w-5 text-info" aria-hidden="true" />
         </div>
-
-        <h1 className="text-2xl font-bold text-white">Verify your email</h1>
-        <p className="text-white/60 mt-2">
+        <p className="text-sm leading-6 text-muted-foreground">
           We sent a verification link to{" "}
-          <span className="text-white font-medium">{user.email}</span>. Click it to activate your
-          account.
+          <span className="font-medium text-foreground">{user.email}</span>. Open the link, then
+          return here to continue.
         </p>
 
-        {notice && <p className="text-emerald-400 text-sm mt-4">{notice}</p>}
-        {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+        <div aria-live="polite">
+          {notice && (
+            <p className="mt-4 rounded-md border border-success/25 bg-success-muted px-3 py-2.5 text-sm text-success">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="mt-4 rounded-md border border-danger/25 bg-danger-muted px-3 py-2.5 text-sm text-danger">
+              {error}
+            </p>
+          )}
+        </div>
 
-        <div className="mt-8 space-y-3">
+        <div className="mt-6 space-y-3">
           <Button className="w-full" onClick={() => continueIfVerified(true)} disabled={checking}>
             {checking ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Checking verification…
+              </>
             ) : (
               <>
-                I&apos;ve verified — continue <ArrowRight className="w-4 h-4" />
+                I&apos;ve verified my email <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </>
             )}
           </Button>
@@ -149,14 +170,10 @@ export default function VerifyEmailPage() {
             )}
           </Button>
         </div>
-
-        <p className="text-white/40 text-sm mt-6">
-          Wrong account?{" "}
-          <button onClick={handleSignOut} className="text-purple-400 hover:underline">
-            Sign in with a different email
-          </button>
+        <p className="mt-5 text-xs leading-5 text-muted-foreground">
+          The link may take a few minutes to arrive. Check your spam folder before requesting
+          another email.
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

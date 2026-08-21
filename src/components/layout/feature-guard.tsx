@@ -28,23 +28,23 @@ export function FeatureGuard({ children }: { children: React.ReactNode }) {
   const pending = status === "pending";
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] animate-fade-in">
-      <Card className="max-w-md w-full border-purple-500/20">
+    <div className="flex min-h-[60vh] items-center justify-center animate-fade-in">
+      <Card className="w-full max-w-md">
         <CardContent className="p-8 flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-surface-muted">
             {pending ? (
-              <Clock className="w-7 h-7 text-white" />
+              <Clock className="h-6 w-6 text-warning" />
             ) : (
-              <Lock className="w-7 h-7 text-white" />
+              <Lock className="h-6 w-6 text-muted-foreground" />
             )}
           </div>
 
           {pending ? (
             <>
-              <h2 className="text-xl font-bold text-white">Verification in progress</h2>
-              <p className="text-sm text-white/60">
-                Your identity is being reviewed. This usually takes between 1 and 24 hours.
-                You&apos;ll be able to use this feature as soon as you&apos;re approved.
+              <h2 className="text-xl font-semibold text-foreground">Verification in progress</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Your identity information is being reviewed by the provider. This feature
+                becomes available when the account is approved.
               </p>
               <Button asChild variant="outline">
                 <Link href="/settings">Check status <ArrowRight className="w-4 h-4" /></Link>
@@ -52,10 +52,10 @@ export function FeatureGuard({ children }: { children: React.ReactNode }) {
             </>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-white">Verification required</h2>
-              <p className="text-sm text-white/60">
-                Complete identity verification (KYC) to unlock deposits, withdrawals, swaps,
-                your card, and more. It only takes a couple of minutes.
+              <h2 className="text-xl font-semibold text-foreground">Verification required</h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Complete provider identity verification before using deposits, withdrawals,
+                conversion, card, and other regulated payment features.
               </p>
               <Button asChild>
                 <Link href="/settings">

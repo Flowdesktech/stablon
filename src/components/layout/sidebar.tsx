@@ -2,185 +2,245 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpFromLine,
+  CalendarClock,
+  CreditCard,
+  Files,
+  Landmark,
+  LayoutDashboard,
+  LifeBuoy,
+  Lock,
+  PanelsTopLeft,
+  ReceiptText,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  TrendingUp,
+  UserRound,
+  Users,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useKycStatus } from "@/hooks/use-bridge";
 import { useProfile } from "@/hooks/use-profile";
 import { UserMenu } from "@/components/layout/user-menu";
 import { isGatedPath } from "@/lib/feature-access";
-import {
-  LayoutDashboard,
-  Landmark,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  CreditCard,
-  ArrowLeftRight,
-  TrendingUp,
-  ReceiptText,
-  Settings,
-  Menu,
-  X,
-  Lock,
-  Users,
-  Wallet,
-  ShieldCheck,
-  LifeBuoy,
-} from "lucide-react";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+interface NavigationItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const paymentItems: NavigationItem[] = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/deposit", label: "Deposit", icon: ArrowDownToLine },
   { href: "/withdraw", label: "Withdraw", icon: ArrowUpFromLine },
+  { href: "/swap", label: "Convert", icon: ArrowLeftRight },
   { href: "/card", label: "Card", icon: CreditCard },
-  { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/earn", label: "Earn", icon: TrendingUp },
+];
+
+const invoiceItems: NavigationItem[] = [
+  { href: "/invoices", label: "Invoices", icon: Files },
+  { href: "/clients", label: "Clients", icon: UserRound },
+  { href: "/recurring-invoices", label: "Recurring", icon: CalendarClock },
+  { href: "/invoice-templates", label: "Templates", icon: PanelsTopLeft },
+  { href: "/invoicing-settings", label: "Invoice settings", icon: SlidersHorizontal },
+];
+
+const accountItems: NavigationItem[] = [
+  { href: "/verify", label: "Verification", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/contact", label: "Support", icon: LifeBuoy },
 ];
 
-const adminNavItems = [
+const adminItems: NavigationItem[] = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/wallets", label: "Wallets", icon: Wallet },
   { href: "/admin/transactions", label: "Transactions", icon: ReceiptText },
 ];
 
-export function Sidebar() {
+function NavigationGroup({
+  label,
+  items,
+  pathname,
+  approved,
+  onNavigate,
+}: {
+  label: string;
+  items: NavigationItem[];
+  pathname: string;
+  approved: boolean;
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      {items.map((item) => {
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const locked = !approved && isGatedPath(item.href);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            aria-disabled={locked}
+            title={locked ? "Complete identity verification to unlock" : undefined}
+            className={cn(
+              "flex min-h-9 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              active
+                ? "bg-info-muted font-medium text-info"
+                : locked
+                  ? "text-muted-foreground/60 hover:bg-surface-subtle"
+                  : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : null}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { isApproved } = useKycStatus();
   const { isSuperAdmin } = useProfile();
 
-  const nav = (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-          <span className="text-white font-bold">S</span>
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center gap-2.5 border-b border-border px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+          S
         </div>
-        <span className="text-lg font-bold text-white">Stablon</span>
+        <div>
+          <p className="text-sm font-semibold leading-4 text-foreground">Stablon</p>
+          <p className="text-[11px] text-muted-foreground">Payments & invoicing</p>
+        </div>
       </div>
 
-      {/* Nav links */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {!isApproved && (
+      <nav aria-label="Product navigation" className="flex-1 overflow-y-auto px-3 py-3">
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          aria-current={pathname === "/dashboard" ? "page" : undefined}
+          className={cn(
+            "flex min-h-9 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+            pathname === "/dashboard"
+              ? "bg-info-muted font-medium text-info"
+              : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground"
+          )}
+        >
+          <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+          Overview
+        </Link>
+
+        {!isApproved ? (
           <Link
             href="/verify"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border",
-              pathname === "/verify"
-                ? "bg-amber-500/20 text-amber-200 border-amber-500/40"
-                : "bg-amber-500/10 text-amber-200 border-amber-500/20 hover:bg-amber-500/15"
-            )}
+            onClick={onNavigate}
+            className="mt-3 flex items-start gap-3 rounded-md border border-warning/25 bg-warning-muted px-3 py-2.5 text-sm text-foreground"
           >
-            <ShieldCheck className="w-5 h-5 shrink-0" />
-            Verify identity
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span>
+              <span className="block font-medium">Verify your identity</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Required for payment features
+              </span>
+            </span>
           </Link>
-        )}
+        ) : null}
 
-        {navItems.map((item) => {
-          const active = pathname === item.href;
-          const locked = !isApproved && isGatedPath(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              aria-disabled={locked}
-              title={locked ? "Complete verification to unlock" : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                active
-                  ? "bg-purple-600/15 text-purple-300"
-                  : locked
-                  ? "text-white/30 hover:text-white/50 hover:bg-white/5"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {item.label}
-              {locked && <Lock className="ml-auto w-3.5 h-3.5 text-white/30" />}
-              {active && !locked && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400" />
-              )}
-            </Link>
-          );
-        })}
-
-        {isSuperAdmin && (
-          <div className="pt-4 mt-2 border-t border-white/5 space-y-1">
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/30">
-              Admin
-            </p>
-            {adminNavItems.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                    active
-                      ? "bg-purple-600/15 text-purple-300"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {item.label}
-                  {active && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400" />
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        <NavigationGroup
+          label="Payments"
+          items={paymentItems}
+          pathname={pathname}
+          approved={isApproved}
+          onNavigate={onNavigate}
+        />
+        <NavigationGroup
+          label="Invoicing"
+          items={invoiceItems}
+          pathname={pathname}
+          approved={isApproved}
+          onNavigate={onNavigate}
+        />
+        <NavigationGroup
+          label="Account"
+          items={accountItems}
+          pathname={pathname}
+          approved={isApproved}
+          onNavigate={onNavigate}
+        />
+        {isSuperAdmin ? (
+          <NavigationGroup
+            label="Admin"
+            items={adminItems}
+            pathname={pathname}
+            approved={isApproved}
+            onNavigate={onNavigate}
+          />
+        ) : null}
       </nav>
 
-      {/* Account */}
-      <div className="p-3 border-t border-white/5">
-        <UserMenu onNavigate={() => setMobileOpen(false)} />
+      <div className="border-t border-border p-3">
+        <UserMenu onNavigate={onNavigate} />
       </div>
     </div>
   );
+}
 
+export function Sidebar({
+  mobileOpen,
+  onMobileOpenChange,
+}: {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}) {
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-white/5 bg-[#0c0c14] h-screen sticky top-0">
-        {nav}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border bg-surface lg:block">
+        <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
       </aside>
 
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-surface border border-white/10 text-white cursor-pointer"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="absolute inset-0 bg-slate-950/45"
+            onClick={() => onMobileOpenChange(false)}
           />
-          <aside className="relative w-72 h-full bg-[#0c0c14] border-r border-white/5">
+          <aside
+            aria-label="Mobile product navigation"
+            className="relative h-full w-[min(20rem,88vw)] border-r border-border bg-surface shadow-[var(--shadow-md)]"
+          >
             <button
-              onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-4 p-1 text-white/40 hover:text-white cursor-pointer"
+              type="button"
+              onClick={() => onMobileOpenChange(false)}
+              className="absolute right-3 top-3 z-10 rounded-md p-2 text-muted-foreground hover:bg-surface-subtle hover:text-foreground"
+              aria-label="Close navigation"
             >
-              <X className="w-5 h-5" />
+              <X className="h-4 w-4" />
             </button>
-            {nav}
+            <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
           </aside>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

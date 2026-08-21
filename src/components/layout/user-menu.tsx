@@ -40,13 +40,13 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-white/5 cursor-pointer">
+        <button className="flex w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface-subtle">
           <Avatar name={name} photoURL={photoURL} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{name}</p>
-            {email && <p className="truncate text-xs text-white/40">{email}</p>}
+            <p className="truncate text-sm font-medium text-foreground">{name}</p>
+            {email && <p className="truncate text-xs text-muted-foreground">{email}</p>}
           </div>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 text-white/30" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
 
@@ -54,8 +54,8 @@ export function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex items-center gap-3 px-2.5 py-2">
           <Avatar name={name} photoURL={photoURL} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-white">{name}</p>
-            {email && <p className="truncate text-xs text-white/40">{email}</p>}
+            <p className="truncate text-sm font-medium text-foreground">{name}</p>
+            {email && <p className="truncate text-xs text-muted-foreground">{email}</p>}
           </div>
         </div>
 
@@ -89,7 +89,7 @@ function Avatar({ name, photoURL }: { name: string; photoURL: string | null }) {
     );
   }
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-xs font-semibold text-white">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
       {initials(name)}
     </div>
   );

@@ -6,8 +6,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { PageHeader, SectionHeader, StatCard } from "@/components/ui/page";
 import { useWallets, useTransfers, useActivity, useCustomer, createBridgeCustomer } from "@/hooks/use-bridge";
 import { ActivityRow } from "@/components/activity/activity-row";
+import { useInvoicingData } from "@/components/invoicing/api";
 import { toast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
 import { aggregateWalletBalances } from "@/lib/bridge";
@@ -17,22 +21,19 @@ import {
   ArrowUpFromLine,
   ArrowLeftRight,
   CreditCard,
-  TrendingUp,
   Wallet,
   DollarSign,
   Euro,
   ChevronRight,
-  Inbox,
-  Sparkles,
   Loader2,
-  ShieldCheck,
+  Files,
 } from "lucide-react";
 
 const quickActions = [
-  { label: "Deposit", icon: ArrowDownToLine, href: "/deposit", gradient: "from-emerald-500 to-emerald-700" },
-  { label: "Withdraw", icon: ArrowUpFromLine, href: "/withdraw", gradient: "from-blue-500 to-blue-700" },
-  { label: "Swap", icon: ArrowLeftRight, href: "/swap", gradient: "from-purple-500 to-purple-700" },
-  { label: "Card", icon: CreditCard, href: "/card", gradient: "from-amber-500 to-amber-700" },
+  { label: "Deposit", icon: ArrowDownToLine, href: "/deposit" },
+  { label: "Withdraw", icon: ArrowUpFromLine, href: "/withdraw" },
+  { label: "Swap", icon: ArrowLeftRight, href: "/swap" },
+  { label: "Card", icon: CreditCard, href: "/card" },
 ];
 
 const currencyIcons: Record<string, typeof DollarSign> = {
@@ -74,18 +75,11 @@ function AccountSetupBanner() {
   }
 
   return (
-    <Card className="relative overflow-hidden border-purple-500/20">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/15 to-blue-600/10" />
-      <CardContent className="relative p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shrink-0">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-white">Finish setting up your account</p>
-          <p className="text-sm text-white/60 mt-1">
-            Link your account to enable deposits, withdrawals, swaps, and your card. This only takes a moment.
-          </p>
-        </div>
+    <Alert
+      variant="info"
+      title="Finish setting up your account"
+      description="Link your account to enable deposits, withdrawals, swaps, and card access."
+      action={
         <Button onClick={handleLink} disabled={linking} className="shrink-0">
           {linking ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Setting up...</>
@@ -93,8 +87,8 @@ function AccountSetupBanner() {
             "Set up account"
           )}
         </Button>
-      </CardContent>
-    </Card>
+      }
+    />
   );
 }
 
@@ -128,21 +122,16 @@ function VerifyBanner() {
       : "Verify identity";
 
   return (
-    <Card className="relative overflow-hidden border-amber-500/25">
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/5" />
-      <CardContent className="relative p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shrink-0">
-          <ShieldCheck className="w-5 h-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-white">{title}</p>
-          <p className="text-sm text-white/60 mt-1">{description}</p>
-        </div>
-        <Link href="/verify" className="shrink-0">
-          <Button variant={pending ? "outline" : undefined}>{ctaLabel}</Button>
-        </Link>
-      </CardContent>
-    </Card>
+    <Alert
+      variant="warning"
+      title={title}
+      description={description}
+      action={
+        <Button asChild variant={pending ? "outline" : undefined}>
+          <Link href="/verify">{ctaLabel}</Link>
+        </Button>
+      }
+    />
   );
 }
 
@@ -150,6 +139,13 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { wallets, isLoading: walletsLoading } = useWallets();
   const { activity, isLoading: activityLoading } = useActivity();
+  const { data: invoiceStats } = useInvoicingData<{
+    total: number;
+    draft: number;
+    outstanding: number;
+    overdue: number;
+    paid: number;
+  }>("/api/invoicing/stats");
 
   if (authLoading || walletsLoading) {
     return (
@@ -178,112 +174,130 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">
-          Welcome back, {user.displayName || "there"}
-        </h1>
-        <p className="text-white/50 mt-1">Here&apos;s your financial overview</p>
-      </div>
+      <PageHeader
+        title={`Welcome back, ${user.displayName || "there"}`}
+        description="Here’s your account overview."
+      />
 
       <AccountSetupBanner />
       <VerifyBanner />
 
       {/* Total balance */}
-      <Card className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-blue-600/10" />
-        <CardContent className="relative p-6">
-          <p className="text-sm text-white/60 mb-1">Total Balance</p>
-          <p className="text-4xl font-bold text-white tracking-tight">
+      <Card>
+        <CardContent className="p-6">
+          <p className="mb-1 text-sm text-muted-foreground">Total balance</p>
+          <p className="text-4xl font-semibold tracking-tight text-foreground">
             {formatCurrency(totalUsd)}
           </p>
           {balances.length === 0 && (
-            <p className="text-sm text-white/40 mt-2">No balances yet. Deposit funds to get started.</p>
+            <p className="mt-2 text-sm text-muted-foreground">No balances yet. Deposit funds to get started.</p>
           )}
         </CardContent>
       </Card>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {quickActions.map((action) => (
-          <Link key={action.label} href={action.href}>
-            <Card className="hover:bg-white/[0.06] transition-all cursor-pointer group">
+          <Link key={action.label} href={action.href} className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            <Card className="group h-full transition-colors hover:bg-surface-muted">
               <CardContent className="p-4 flex flex-col items-center gap-3 text-center">
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <action.icon className="w-5 h-5 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info-muted text-primary">
+                  <action.icon className="h-5 w-5" />
                 </div>
-                <span className="text-sm font-medium text-white/80">{action.label}</span>
+                <span className="text-sm font-medium text-foreground">{action.label}</span>
               </CardContent>
             </Card>
           </Link>
         ))}
       </div>
 
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-info-muted">
+              <Files className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-foreground">Invoicing</p>
+                  <p className="text-sm text-muted-foreground">Create invoices and collect payments.</p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/invoices">View invoices</Link>
+                </Button>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4 text-center sm:max-w-md sm:text-left">
+                <div>
+                  <p className="text-lg font-semibold text-foreground">{invoiceStats?.total ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-warning">{invoiceStats?.outstanding ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">Outstanding</p>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-success">{invoiceStats?.paid ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">Paid</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Balance cards */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Balances</h2>
+        <SectionHeader title="Balances" className="mb-4" />
         {balances.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {balances.map((b) => {
               const Icon = currencyIcons[b.currency.toLowerCase()] || Wallet;
               const symbol = b.currency.toLowerCase() === "eur" ? "€" : "$";
               return (
-                <Card key={b.currency} className="hover:bg-white/[0.06] transition-all">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-white/60" />
-                      </div>
-                    </div>
-                    <p className="text-2xl font-bold text-white">
-                      {symbol}{b.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-sm text-white/50 mt-1">{b.currency.toUpperCase()}</p>
-                  </CardContent>
-                </Card>
+                <StatCard
+                  key={b.currency}
+                  label={b.currency.toUpperCase()}
+                  icon={<Icon className="h-5 w-5" />}
+                  value={`${symbol}${b.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                />
               );
             })}
           </div>
         ) : (
-          <Card>
-            <CardContent className="p-8 flex flex-col items-center gap-3 text-center">
-              <Wallet className="w-8 h-8 text-white/20" />
-              <p className="text-sm text-white/40">No balances yet. Deposit funds to see them here.</p>
-              <Link href="/deposit"><Button size="sm">Make a Deposit</Button></Link>
-            </CardContent>
-          </Card>
+          <DataView>
+            <DataState
+              title="No balances yet"
+              description="Deposit funds to see balances here."
+              action={<Button asChild size="sm"><Link href="/deposit">Make a deposit</Link></Button>}
+            />
+          </DataView>
         )}
       </div>
 
       {/* Recent activity */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
-          <Button asChild variant="ghost" size="sm" className="text-white/50">
+          <h2 className="text-sm font-semibold text-foreground">Recent activity</h2>
+          <Button asChild variant="ghost" size="sm">
             <Link href="/transactions">
               View All <ChevronRight className="w-4 h-4" />
             </Link>
           </Button>
         </div>
-        <Card>
-          <CardContent className="p-0">
+        <DataView>
             {activityLoading ? (
-              <div className="p-6 space-y-4">
-                {[1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}
-              </div>
+              <DataState kind="loading" title="Loading activity" />
             ) : recentActivity.length > 0 ? (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {recentActivity.map((tx) => (
                   <ActivityRow key={`${tx.kind}-${tx.id}`} item={tx} />
                 ))}
               </div>
             ) : (
-              <div className="p-8 flex flex-col items-center gap-3 text-center">
-                <Inbox className="w-8 h-8 text-white/20" />
-                <p className="text-sm text-white/40">No transactions yet. Your activity will appear here.</p>
-              </div>
+              <DataState title="No transactions yet" description="Your account activity will appear here." />
             )}
-          </CardContent>
-        </Card>
+        </DataView>
       </div>
     </div>
   );

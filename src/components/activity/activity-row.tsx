@@ -20,17 +20,17 @@ export function ActivityRow({ item }: { item: ActivityItem }) {
   return (
     <Link
       href={`/transactions/${encodeURIComponent(item.id)}`}
-      className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+      className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-          {item.type === "deposit" && <ArrowDownToLine className="w-4 h-4 text-emerald-400" />}
-          {item.type === "withdrawal" && <ArrowUpFromLine className="w-4 h-4 text-blue-400" />}
-          {item.type === "swap" && <ArrowLeftRight className="w-4 h-4 text-purple-400" />}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-subtle">
+          {item.type === "deposit" && <ArrowDownToLine className="h-4 w-4 text-success" />}
+          {item.type === "withdrawal" && <ArrowUpFromLine className="h-4 w-4 text-info" />}
+          {item.type === "swap" && <ArrowLeftRight className="h-4 w-4 text-primary" />}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-white truncate">{item.description}</p>
-          <div className="flex items-center gap-1.5 text-xs text-white/40">
+          <p className="truncate text-sm font-medium text-foreground">{item.description}</p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
             {formatDate(item.created_at)}
           </div>
@@ -38,7 +38,7 @@ export function ActivityRow({ item }: { item: ActivityItem }) {
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <div className="text-right">
-          <p className={`text-sm font-medium ${isIncoming ? "text-emerald-400" : "text-white"}`}>
+          <p className={`text-sm font-medium ${isIncoming ? "text-success" : "text-foreground"}`}>
             {isIncoming ? "+" : "-"}
             {formatAmount(amt, item.currency)}
           </p>
@@ -46,7 +46,7 @@ export function ActivityRow({ item }: { item: ActivityItem }) {
             {statusLabel(item.status)}
           </Badge>
         </div>
-        <ChevronRight className="w-4 h-4 text-white/20" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </div>
     </Link>
   );

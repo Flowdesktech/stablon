@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { Field } from "@/components/ui/field";
+import { PageHeader } from "@/components/ui/page";
 import { useCustomer, startKYC } from "@/hooks/use-bridge";
 import { toast } from "@/components/ui/toast";
 import { SecuritySection } from "@/components/settings/security-section";
@@ -50,22 +53,22 @@ function KycTaskRow({
   loading?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-muted p-3">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-subtle">
           {done ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 text-success" />
           ) : (
-            <Icon className="w-4 h-4 text-purple-400" />
+            <Icon className="h-4 w-4 text-info" />
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-white">{title}</p>
-          <p className="text-xs text-white/40 truncate">{desc}</p>
+          <p className="text-sm text-foreground">{title}</p>
+          <p className="truncate text-xs text-muted-foreground">{desc}</p>
         </div>
       </div>
       {done ? (
-        <span className="text-xs text-emerald-400 shrink-0">Done</span>
+        <span className="shrink-0 text-xs text-success">Done</span>
       ) : href ? (
         // Native anchor so the new tab opens on the click itself (no popup block).
         <Button asChild size="sm" variant="outline">
@@ -185,43 +188,40 @@ export default function SettingsPage() {
         onAction={() => loadLinks()}
         loading={loadingLinks}
       />
-      <p className="text-xs text-white/40 pt-1">
+      <p className="pt-1 text-xs text-muted-foreground">
         Finished both?{" "}
-        <button onClick={() => refreshCustomer()} className="text-purple-400 hover:underline">
+        <button onClick={() => refreshCustomer()} className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Refresh status
         </button>
       </p>
 
-      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-muted p-3">
         <div>
-          <p className="text-sm text-white font-medium">Verify in-app instead</p>
-          <p className="text-xs text-white/40">
+          <p className="text-sm font-medium text-foreground">Verify in-app instead</p>
+          <p className="text-xs text-muted-foreground">
             Enter your details directly — quick check or full document verification.
           </p>
         </div>
-        <Link href="/verify">
-          <Button variant="outline" size="sm">Verify in-app</Button>
-        </Link>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/verify">Verify in-app</Link>
+        </Button>
       </div>
     </div>
   );
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-white/50 mt-1">Manage your profile, verification, and preferences</p>
-      </div>
+      <PageHeader title="Settings" description="Manage your profile, verification, security, and preferences." />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* KYC Verification */}
-          <Card className={["not_started", "none", "incomplete"].includes(kycStatus) ? "border-amber-500/20" : kycStatus === "approved" ? "border-emerald-500/20" : ""}>
+          <Card className={["not_started", "none", "incomplete"].includes(kycStatus) ? "border-warning/30" : kycStatus === "approved" ? "border-success/30" : ""}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-purple-400" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info-muted">
+                    <Shield className="h-5 w-5 text-info" />
                   </div>
                   <div>
                     <CardTitle className="text-base">Identity Verification (KYC)</CardTitle>
@@ -241,9 +241,8 @@ export default function SettingsPage() {
             <CardContent>
               {["not_started", "none"].includes(kycStatus) && (
                 <div className="space-y-4">
-                  <p className="text-sm text-white/50">
-                    Complete identity verification to unlock deposits, withdrawals, card access, and more.
-                    The process takes about 2 minutes.
+                  <p className="text-sm text-muted-foreground">
+                    Complete identity verification to unlock eligible financial features.
                   </p>
                   {verificationTasks}
                 </div>
@@ -251,24 +250,24 @@ export default function SettingsPage() {
 
               {kycStatus === "incomplete" && (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                    <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-md border border-warning/25 bg-warning-muted p-4">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-amber-300">A few more steps needed</p>
-                      <p className="text-xs text-amber-300/70 mt-1">
+                      <p className="text-sm font-medium text-foreground">A few more steps needed</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         We&apos;ve received your details. Bridge still needs the following to finish
                         verifying your identity:
                       </p>
                       {outstanding.length > 0 ? (
                         <ul className="mt-2 space-y-1 list-disc list-inside">
                           {outstanding.map((req) => (
-                            <li key={req} className="text-xs text-amber-300/80">
+                            <li key={req} className="text-xs text-foreground">
                               {req}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-xs text-amber-300/60 mt-1">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           Complete the remaining verification steps below.
                         </p>
                       )}
@@ -279,45 +278,37 @@ export default function SettingsPage() {
               )}
 
               {kycStatus === "pending" && (
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                  <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-300">Verification in Progress</p>
-                    <p className="text-xs text-amber-300/60 mt-1">
-                      Your documents are being reviewed. This usually takes 1-24 hours.
-                    </p>
-                  </div>
-                </div>
+                <Alert
+                  variant="warning"
+                  title="Verification in progress"
+                  description="Your submitted information is being reviewed."
+                />
               )}
 
               {kycStatus === "approved" && (
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-emerald-300">Identity Verified</p>
-                    <p className="text-xs text-emerald-300/60 mt-1">
-                      Your identity has been verified. You have full access to all features.
-                    </p>
-                  </div>
-                </div>
+                <Alert
+                  variant="success"
+                  title="Identity verified"
+                  description="Your identity has been approved."
+                />
               )}
 
               {kycStatus === "rejected" && (
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/5 border border-red-500/10">
-                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-md border border-danger/25 bg-danger-muted p-4">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-danger" />
                     <div>
-                      <p className="text-sm font-medium text-red-300">Verification Failed</p>
+                      <p className="text-sm font-medium text-foreground">Verification failed</p>
                       {rejectionReasons.length > 0 ? (
                         <ul className="mt-1 space-y-1 list-disc list-inside">
                           {rejectionReasons.map((reason) => (
-                            <li key={reason} className="text-xs text-red-300/70">
+                            <li key={reason} className="text-xs text-foreground">
                               {reason}
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-xs text-red-300/60 mt-1">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           Please try again with clearer documents or contact support.
                         </p>
                       )}
@@ -333,8 +324,8 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info-muted">
+                  <User className="h-5 w-5 text-info" />
                 </div>
                 <div>
                   <CardTitle className="text-base">Profile Information</CardTitle>
@@ -344,17 +335,36 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-white/50 mb-1.5">Full Name</label>
+                <Field label="Full name">
                   <Input defaultValue={user?.displayName || ""} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-white/50 mb-1.5">Email</label>
+                </Field>
+                <Field label="Email">
                   <Input defaultValue={user?.email || ""} disabled />
-                </div>
+                </Field>
               </div>
               <Button size="sm">Save Changes</Button>
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info-muted">
+                    <FileText className="h-5 w-5 text-info" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Invoicing</CardTitle>
+                    <CardDescription>
+                      Business profiles, invoice defaults, templates, and payment settlement
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/invoicing-settings">Manage</Link>
+                </Button>
+              </div>
+            </CardHeader>
           </Card>
 
           {/* Security */}
@@ -375,10 +385,10 @@ export default function SettingsPage() {
                 { icon: Bell, label: "Notifications", value: "Enabled" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <item.icon className="w-4 h-4 text-white/30 shrink-0" />
+                  <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white/40">{item.label}</p>
-                    <p className="text-sm text-white truncate">{item.value}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className="truncate text-sm text-foreground">{item.value}</p>
                   </div>
                 </div>
               ))}
@@ -387,7 +397,7 @@ export default function SettingsPage() {
 
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-white mb-2">Feature Access</h3>
+              <h3 className="mb-2 text-sm font-medium text-foreground">Feature access</h3>
               <div className="space-y-2">
                 {[
                   { feature: "Dashboard", unlocked: true },
@@ -398,11 +408,11 @@ export default function SettingsPage() {
                   { feature: "Earn", unlocked: kycStatus === "approved" },
                 ].map((item) => (
                   <div key={item.feature} className="flex items-center justify-between text-sm">
-                    <span className="text-white/60">{item.feature}</span>
+                    <span className="text-muted-foreground">{item.feature}</span>
                     {item.unlocked ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="h-4 w-4 text-success" />
                     ) : (
-                      <Lock className="w-4 h-4 text-white/20" />
+                      <Lock className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 ))}

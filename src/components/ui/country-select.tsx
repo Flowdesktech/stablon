@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { country } from "@koshmoney/countries";
 import { Check, ChevronDown } from "lucide-react";
@@ -48,6 +48,7 @@ export function Combobox({
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const [position, setPosition] = useState<PanelPosition | null>(null);
+  const listboxId = useId();
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -146,6 +147,11 @@ export function Combobox({
       <button
         ref={triggerRef}
         type="button"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
+        aria-label={selected ? `Selected: ${selected.label}` : placeholder}
         onClick={() => {
           if (!open) {
             setQuery("");
@@ -161,13 +167,13 @@ export function Combobox({
             setOpen(true);
           }
         }}
-        className="flex w-full h-10 items-center justify-between gap-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 text-sm outline-none focus:border-purple-500/50 cursor-pointer"
+        className="flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground shadow-[var(--shadow-sm)] outline-none focus:border-focus focus:ring-2 focus:ring-focus/20"
       >
-        <span className={selected ? "text-white truncate" : "text-white/40 truncate"}>
+        <span className={selected ? "truncate text-foreground" : "truncate text-muted-foreground"}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
-          className={cn("w-4 h-4 text-white/40 shrink-0 transition-transform", open && "rotate-180")}
+          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
         />
       </button>
 
@@ -183,9 +189,9 @@ export function Combobox({
               width: position.width,
               maxHeight: position.maxHeight,
             }}
-            className="z-[9999] flex flex-col rounded-lg border border-white/10 bg-[#14141c] shadow-2xl shadow-black/60 overflow-hidden"
+            className="z-[9999] flex flex-col overflow-hidden rounded-md border border-border bg-surface text-foreground shadow-[var(--shadow-md)]"
           >
-            <div className="p-2 border-b border-white/10 shrink-0">
+            <div className="shrink-0 border-b border-border p-2">
               <input
                 autoFocus
                 value={query}
@@ -195,27 +201,29 @@ export function Combobox({
                 }}
                 onKeyDown={onKeyDown}
                 placeholder={searchPlaceholder}
-                className="w-full h-9 rounded-md bg-white/[0.04] border border-white/10 px-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-purple-500/50"
+                className="h-9 w-full rounded-md border border-border-strong bg-surface px-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-focus focus:ring-2 focus:ring-focus/20"
               />
             </div>
-            <ul ref={listRef} className="flex-1 overflow-y-auto py-1">
+            <ul id={listboxId} ref={listRef} role="listbox" className="flex-1 overflow-y-auto py-1">
               {filtered.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-white/40">No matches found</li>
+                <li className="px-3 py-2 text-sm text-muted-foreground">No matches found</li>
               ) : (
                 filtered.map((o, i) => (
                   <li key={o.value}>
                     <button
                       type="button"
+                      role="option"
+                      aria-selected={value === o.value}
                       onMouseEnter={() => setHighlight(i)}
                       onClick={() => select(o)}
                       className={cn(
                         "flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left",
-                        i === highlight ? "bg-purple-500/20 text-white" : "text-white/80"
+                        i === highlight ? "bg-info-muted text-info" : "text-foreground"
                       )}
                     >
                       <span className="truncate">{o.label}</span>
                       {value === o.value && (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Check className="h-3.5 w-3.5 shrink-0 text-success" />
                       )}
                     </button>
                   </li>

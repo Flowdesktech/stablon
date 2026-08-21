@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/app/(auth)/auth-shell";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
@@ -36,86 +37,87 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="text-2xl font-bold text-white">Stablon</span>
+    <AuthShell
+      eyebrow="Create an account"
+      title="Set up your Stablon account"
+      description="Enter your details. You’ll verify your email before accessing your workspace."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Sign in
           </Link>
-          <h1 className="text-2xl font-bold text-white">Create your account</h1>
-          <p className="text-white/60 mt-2">Start banking globally in minutes</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        </>
+      }
+    >
+        <form onSubmit={handleSubmit} className="space-y-5" aria-describedby={error ? "register-error" : undefined}>
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Full Name
+            <label htmlFor="register-name" className="mb-1.5 block text-sm font-medium text-foreground">
+              Full name
             </label>
             <Input
+              id="register-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="John Doe"
+              placeholder="Your full name"
+              autoComplete="name"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Email
+            <label htmlFor="register-email" className="mb-1.5 block text-sm font-medium text-foreground">
+              Email address
             </label>
             <Input
+              id="register-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              autoComplete="email"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
+            <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-foreground">
               Password
             </label>
             <Input
+              id="register-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min. 8 characters"
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
               minLength={8}
               required
             />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Use at least 8 characters and a password you do not reuse elsewhere.
+            </p>
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
+            <p id="register-error" role="alert" className="rounded-md border border-danger/25 bg-danger-muted px-3 py-2.5 text-sm text-danger">
+              {error}
+            </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading} aria-busy={loading}>
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Creating account…
+              </>
             ) : (
               <>
-                Create Account <ArrowRight className="w-4 h-4" />
+                Create account <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </>
             )}
           </Button>
         </form>
-
-        <p className="text-center text-white/50 text-sm mt-6">
-          Already have an account?{" "}
-          <Link href="/login" className="text-purple-400 hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

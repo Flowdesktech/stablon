@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/layout/sidebar";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { FeatureGuard } from "@/components/layout/feature-guard";
 import { AppLock } from "@/components/app-lock";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
@@ -19,15 +19,14 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0f]">
-      <Sidebar />
-      <main className="flex-1 min-w-0">
+    <DashboardShell>
+      <main className="min-w-0">
         <ImpersonationBanner />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <FeatureGuard>{children}</FeatureGuard>
         </div>
       </main>
       <AppLock />
-    </div>
+    </DashboardShell>
   );
 }

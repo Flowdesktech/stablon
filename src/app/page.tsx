@@ -1,107 +1,92 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  ArrowDownLeft,
   ArrowRight,
-  Globe,
-  CreditCard,
-  TrendingUp,
-  ArrowLeftRight,
-  Shield,
-  Zap,
-  UserPlus,
+  ArrowUpRight,
   BadgeCheck,
-  Wallet,
+  Building2,
+  Check,
+  CircleDollarSign,
+  FileText,
+  Globe2,
+  Landmark,
+  RefreshCw,
+  Repeat2,
+  Send,
+  ShieldCheck,
+  WalletCards,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  PublicFooter,
+  PublicHeader,
+  TextLink,
+} from "@/components/marketing/public-shell";
+import { blogPosts } from "@/lib/blog";
+import { marketingFaqs } from "@/lib/marketing-content";
 import { siteConfig, siteUrl } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: siteConfig.title,
+  title: { absolute: siteConfig.title },
   description: siteConfig.description,
   alternates: { canonical: "/" },
 };
 
-const features = [
+const paymentCapabilities = [
   {
-    icon: Globe,
-    title: "Global Accounts",
-    desc: "Open USD, EUR, and GBP accounts instantly. Receive via ACH, Wire, SEPA, and Faster Payments.",
-    gradient: "from-purple-500 to-purple-700",
+    icon: Landmark,
+    title: "Business money accounts",
+    description:
+      "Access supported USD, EUR, and GBP account details after provider onboarding and verification.",
   },
   {
-    icon: ArrowLeftRight,
-    title: "On & Off Ramp",
-    desc: "Deposit fiat or stablecoins. Cash out to your bank account via local rails worldwide.",
-    gradient: "from-blue-500 to-blue-700",
+    icon: Globe2,
+    title: "Bank payment rails",
+    description:
+      "Send and receive through supported ACH, wire, SEPA, and Faster Payments routes.",
   },
   {
-    icon: CreditCard,
-    title: "Visa Card",
-    desc: "Spend stablecoins like cash at 200M+ merchants. Apple Pay and Google Pay supported.",
-    gradient: "from-indigo-500 to-indigo-700",
+    icon: CircleDollarSign,
+    title: "Stablecoin settlement",
+    description:
+      "Use supported stablecoins and networks when they are available for your account and jurisdiction.",
   },
   {
-    icon: ArrowLeftRight,
-    title: "Instant Swap",
-    desc: "Convert crypto to stablecoins automatically. One-tap conversions, no complexity.",
-    gradient: "from-cyan-500 to-cyan-700",
-  },
-  {
-    icon: TrendingUp,
-    title: "Earn Yield",
-    desc: "Up to 5% APY on your stablecoin balance. Updated in real time, no lock-ups.",
-    gradient: "from-emerald-500 to-emerald-700",
-  },
-  {
-    icon: Shield,
-    title: "Secure & Compliant",
-    desc: "Bank-grade encryption, 24/7 monitoring, and full KYC/KYB compliance built in.",
-    gradient: "from-amber-500 to-amber-700",
+    icon: RefreshCw,
+    title: "Conversion and activity",
+    description:
+      "Review balances, convert supported assets, and keep bank and stablecoin activity in one history.",
   },
 ];
 
-const steps = [
+const invoiceCapabilities = [
+  "Itemized invoices with tax, discounts, terms, and due dates",
+  "15 professional invoice designs with downloadable PDFs",
+  "Email delivery and secure public invoice links",
+  "Weekly, biweekly, monthly, quarterly, or yearly schedules",
+  "Payment status linked to transaction activity",
+];
+
+const workflow = [
   {
-    icon: UserPlus,
-    title: "Create your account",
-    desc: "Sign up with your email in under a minute — no branch visit, no paperwork.",
+    icon: Building2,
+    title: "Set up your account",
+    description:
+      "Create a profile and complete the provider verification required for payment services.",
+  },
+  {
+    icon: FileText,
+    title: "Request payment",
+    description:
+      "Create an invoice or share supported account details and payment instructions with a client.",
   },
   {
     icon: BadgeCheck,
-    title: "Verify your identity",
-    desc: "Complete a quick, secure KYC check to unlock USD and EUR accounts.",
-  },
-  {
-    icon: Wallet,
-    title: "Move, spend & earn",
-    desc: "Deposit funds, spend with your Visa card, swap instantly, and earn yield automatically.",
-  },
-];
-
-const faqs = [
-  {
-    q: "What is Stablon?",
-    a: "Stablon is a global money app built on stablecoin infrastructure. It lets you open USD and EUR accounts, move money by bank transfer or on-chain, spend with a Visa card, swap between assets, and earn yield — all from one place.",
-  },
-  {
-    q: "Which countries and currencies are supported?",
-    a: "Stablon is available to users in 160+ countries. You can hold USD, EUR, and GBP balances and receive funds via ACH, Wire, SEPA, and Faster Payments, plus on-chain stablecoins like USDC, USDT, and DAI.",
-  },
-  {
-    q: "How do I add or withdraw money?",
-    a: "Deposit fiat through local bank rails or send stablecoins to your wallet. When you want to cash out, withdraw to your linked bank account through the same local rails, worldwide.",
-  },
-  {
-    q: "What is the Stablon Visa card?",
-    a: "It's a card that lets you spend your stablecoin balance like cash at over 200 million merchants, with Apple Pay and Google Pay support.",
-  },
-  {
-    q: "How does earning yield work?",
-    a: "Your eligible stablecoin balance can earn up to 5% APY. Yield accrues in real time with no lock-ups, so your funds stay available whenever you need them.",
-  },
-  {
-    q: "Is Stablon secure?",
-    a: "Yes. Stablon uses bank-grade encryption, optional two-factor authentication, 24/7 monitoring, and full KYC/KYB compliance to protect your account and funds.",
+    title: "Track settlement",
+    description:
+      "Follow payment updates and match completed transfers to the relevant invoice and client.",
   },
 ];
 
@@ -109,293 +94,370 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "Organization",
-      "@id": `${siteUrl}/#organization`,
+      "@type": "WebApplication",
+      "@id": `${siteUrl}/#application`,
       name: siteConfig.name,
       url: siteUrl,
-      description: siteConfig.description,
-      logo: `${siteUrl}/icon`,
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${siteUrl}/#website`,
-      url: siteUrl,
-      name: siteConfig.name,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
       description: siteConfig.description,
       publisher: { "@id": `${siteUrl}/#organization` },
-      inLanguage: "en",
-    },
-    {
-      "@type": "WebApplication",
-      name: siteConfig.name,
-      url: siteUrl,
-      applicationCategory: "FinanceApplication",
-      operatingSystem: "Web, iOS, Android",
-      description: siteConfig.description,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
+      featureList: [
+        "Business money accounts",
+        "Bank and stablecoin payment workflows",
+        "Professional invoice creation",
+        "Invoice PDF and email delivery",
+        "Recurring invoice schedules",
+        "Invoice payment reconciliation",
+      ],
     },
     {
       "@type": "FAQPage",
-      mainEntity: faqs.map((f) => ({
+      mainEntity: marketingFaqs.slice(0, 6).map((faq) => ({
         "@type": "Question",
-        name: f.q,
-        acceptedAnswer: { "@type": "Answer", text: f.a },
+        name: faq.question,
+        acceptedAnswer: { "@type": "Answer", text: faq.answer },
       })),
     },
   ],
 };
 
+function ProductPreview() {
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3 shadow-[var(--shadow-md)] sm:p-4">
+      <div className="flex items-center justify-between border-b border-border px-1 pb-3">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Business overview</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">Payments and invoices</p>
+        </div>
+        <span className="rounded-full border border-success/25 bg-success-muted px-2.5 py-1 text-xs font-medium text-success">
+          Operational
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-surface-muted p-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>USD balance</span>
+            <Landmark className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+            $24,860.40
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Available balance</p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface-muted p-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Open invoices</span>
+            <FileText className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+            $8,420.00
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Across 4 invoices</p>
+        </div>
+      </div>
+      <div className="mt-3 overflow-hidden rounded-lg border border-border">
+        <div className="flex items-center justify-between border-b border-border bg-surface-muted px-4 py-3">
+          <p className="text-xs font-semibold text-foreground">Recent activity</p>
+          <span className="text-xs text-muted-foreground">Status</span>
+        </div>
+        {[
+          {
+            icon: ArrowDownLeft,
+            title: "Invoice STB-1042",
+            detail: "Client payment",
+            amount: "+$2,400.00",
+            status: "Completed",
+            statusClass: "text-success",
+          },
+          {
+            icon: Send,
+            title: "Invoice STB-1045",
+            detail: "Payment request sent",
+            amount: "$1,800.00",
+            status: "Awaiting payment",
+            statusClass: "text-warning",
+          },
+          {
+            icon: ArrowUpRight,
+            title: "USD withdrawal",
+            detail: "Bank transfer",
+            amount: "-$950.00",
+            status: "Processing",
+            statusClass: "text-info",
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-4 py-3 last:border-0"
+          >
+            <span className="rounded-md bg-surface-subtle p-2 text-muted-foreground">
+              <item.icon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
+              <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground tabular-nums">{item.amount}</p>
+              <p className={cn("text-xs", item.statusClass)}>{item.status}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground">
       <script
         type="application/ld+json"
-        // Structured data for search engines (Organization, WebSite, WebApplication, FAQ).
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PublicHeader />
 
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-purple-600/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-blue-600/6 rounded-full blur-3xl" />
-      </div>
-
-      {/* Nav */}
-      <header className="relative z-10">
-        <nav
-          aria-label="Primary"
-          className="flex items-center justify-between px-6 lg:px-12 py-5 max-w-7xl mx-auto"
-        >
-          <Link href="/" className="flex items-center gap-2" aria-label="Stablon home">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold" aria-hidden="true">
-                S
-              </span>
-            </div>
-            <span className="text-xl font-bold text-white">Stablon</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button size="sm">Get Started</Button>
-            </Link>
-          </div>
-        </nav>
-      </header>
-
-      <main className="relative z-10">
-        {/* Hero */}
-        <section aria-labelledby="hero-heading" className="max-w-7xl mx-auto px-6 lg:px-12 pt-20 pb-32">
-          <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm mb-6">
-              <Zap className="w-3.5 h-3.5" aria-hidden="true" />
-              Powered by Bridge.xyz
-            </p>
-            <h1
-              id="hero-heading"
-              className="text-5xl lg:text-7xl font-bold text-white leading-tight tracking-tight"
-            >
-              One App.
-              <br />
-              One Card.
-              <br />
-              <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                Everything Money.
-              </span>
-            </h1>
-            <p className="text-lg text-white/60 mt-6 max-w-xl leading-relaxed">
-              Get USD and EUR bank accounts from anywhere. Move money freely, earn automatically, and
-              spend stablecoins like cash — all from one secure app.
-            </p>
-            <div className="flex flex-wrap gap-4 mt-8">
-              <Link href="/register">
-                <Button size="lg">
-                  Create Account <ArrowRight className="w-4 h-4 ml-1" aria-hidden="true" />
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button variant="outline" size="lg">
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <dl className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20">
-            {[
-              { label: "Countries", value: "160+" },
-              { label: "Supported Chains", value: "10+" },
-              { label: "Transaction Fee", value: "0%" },
-              { label: "Merchants", value: "200M+" },
-            ].map((stat) => (
-              <div key={stat.label} className="flex flex-col-reverse text-center">
-                <dt className="text-sm text-white/50 mt-1">{stat.label}</dt>
-                <dd className="text-3xl font-bold text-white">{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {/* Features */}
-        <section aria-labelledby="features-heading" className="max-w-7xl mx-auto px-6 lg:px-12 pb-32">
-          <h2 id="features-heading" className="text-3xl font-bold text-white text-center mb-4">
-            Your money. Upgraded.
-          </h2>
-          <p className="text-white/50 text-center max-w-md mx-auto mb-16">
-            Everything you need for global finance, in one platform.
-          </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <article
-                key={f.title}
-                className="group relative rounded-2xl border border-white/5 bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all"
-              >
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mb-4`}
+      <main>
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1fr_0.95fr] lg:px-8 lg:py-28">
+            <div>
+              <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+                Payment services powered by Bridge infrastructure
+              </p>
+              <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl lg:text-6xl">
+                Business payments and invoicing, in one practical workflow
+              </h1>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+                Manage supported business accounts, move money through bank or stablecoin
+                rails, and create invoices that help clients pay with clear instructions.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/register" className={buttonVariants({ size: "lg" })}>
+                  Create account <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  href="/invoice-generator"
+                  className={buttonVariants({ variant: "outline", size: "lg" })}
                 >
-                  <f.icon className="w-6 h-6 text-white" aria-hidden="true" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{f.desc}</p>
-              </article>
-            ))}
+                  Create a free invoice PDF
+                </Link>
+              </div>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                Invoice PDFs do not require verification. Payment features require provider
+                onboarding and are subject to jurisdiction and route availability.
+              </p>
+            </div>
+            <ProductPreview />
           </div>
         </section>
 
-        {/* How it works */}
-        <section aria-labelledby="how-heading" className="max-w-7xl mx-auto px-6 lg:px-12 pb-32">
-          <h2 id="how-heading" className="text-3xl font-bold text-white text-center mb-4">
-            Get started in three steps
-          </h2>
-          <p className="text-white/50 text-center max-w-md mx-auto mb-16">
-            From sign-up to spending in minutes — no branch visits, no paperwork.
-          </p>
-          <ol className="grid md:grid-cols-3 gap-6">
-            {steps.map((step, i) => (
-              <li
-                key={step.title}
-                className="relative rounded-2xl border border-white/5 bg-white/[0.02] p-6"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                    <step.icon className="w-5 h-5 text-white" aria-hidden="true" />
-                  </div>
-                  <span className="text-sm font-medium text-white/40">Step {i + 1}</span>
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{step.desc}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Payment rails */}
-        <section aria-labelledby="rails-heading" className="max-w-7xl mx-auto px-6 lg:px-12 pb-32">
-          <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-8 lg:p-12">
-            <h2 id="rails-heading" className="text-2xl font-bold text-white mb-2">
-              Local Rails, Global Reach
-            </h2>
-            <p className="text-white/50 mb-8">
-              Receive and send via the payment rail that works best for you.
-            </p>
-            <ul className="flex flex-wrap gap-3">
-              {[
-                "ACH",
-                "Wire",
-                "SEPA",
-                "Faster Payments",
-                "USDC",
-                "USDT",
-                "USDB",
-                "DAI",
-                "PYUSD",
-              ].map((rail) => (
-                <li
+        <section id="payments" aria-labelledby="payments-heading" className="scroll-mt-20">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold text-primary">Payments</p>
+              <h2 id="payments-heading" className="mt-2 text-3xl font-semibold tracking-tight">
+                Move business money through supported local and digital rails
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">
+                Account details, transfers, conversion, and transaction history stay
+                connected so teams have a clear view of where funds came from and where they went.
+              </p>
+            </div>
+            <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+              {paymentCapabilities.map((capability) => (
+                <article key={capability.title} className="bg-surface p-6">
+                  <capability.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                  <h3 className="mt-4 text-sm font-semibold">{capability.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {capability.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {["ACH", "Wire", "SEPA", "Faster Payments", "USDC", "USDT"].map((rail) => (
+                <span
                   key={rail}
-                  className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-white/70"
+                  className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground"
                 >
                   {rail}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-border bg-surface">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold text-primary">Workflow</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                From account setup to reconciled payment
+              </h2>
+            </div>
+            <ol className="mt-10 grid gap-5 md:grid-cols-3">
+              {workflow.map((item, index) => (
+                <li key={item.title} className="rounded-lg border border-border bg-background p-6">
+                  <div className="flex items-center justify-between">
+                    <item.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 text-base font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {item.description}
+                  </p>
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section aria-labelledby="faq-heading" className="max-w-3xl mx-auto px-6 lg:px-12 pb-32">
-          <h2 id="faq-heading" className="text-3xl font-bold text-white text-center mb-4">
-            Frequently asked questions
-          </h2>
-          <p className="text-white/50 text-center mb-12">
-            Everything you need to know about banking with Stablon.
-          </p>
-          <div className="space-y-3">
-            {faqs.map((faq) => (
-              <details
-                key={faq.q}
-                className="group rounded-2xl border border-white/5 bg-white/[0.02] p-5"
+        <section id="invoicing" aria-labelledby="invoicing-heading" className="scroll-mt-20">
+          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
+            <div>
+              <p className="text-sm font-semibold text-primary">Invoicing</p>
+              <h2 id="invoicing-heading" className="mt-2 text-3xl font-semibold tracking-tight">
+                Turn payment collection into a repeatable client process
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground">
+                Build a professional invoice, send a PDF and secure link, then keep its
+                lifecycle connected to your payment activity. Use recurring schedules for
+                repeat work without rebuilding the same invoice.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link href="/register" className={buttonVariants()}>
+                  Start invoicing
+                </Link>
+                <TextLink href="/invoice-generator">Try the PDF generator</TextLink>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-surface p-6 shadow-[var(--shadow-sm)]">
+              <div className="flex items-center gap-3 border-b border-border pb-4">
+                <span className="rounded-md bg-info-muted p-2 text-info">
+                  <WalletCards className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">Invoice collection toolkit</p>
+                  <p className="text-xs text-muted-foreground">
+                    Create, deliver, schedule, and reconcile
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-5 grid gap-3">
+                {invoiceCapabilities.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm text-foreground">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                    <span className="leading-6">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-5">
+                <div className="rounded-md bg-surface-muted p-3">
+                  <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-medium">15 PDF designs</p>
+                </div>
+                <div className="rounded-md bg-surface-muted p-3">
+                  <Repeat2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-medium">5 schedule cadences</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-border bg-surface">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-primary">From the blog</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                  Understand invoice and payment workflows
+                </h2>
+              </div>
+              <TextLink href="/blog">View all articles</TextLink>
+            </div>
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
+              {blogPosts.slice(0, 3).map((post) => (
+                <article key={post.slug} className="rounded-lg border border-border bg-background p-6">
+                  <p className="text-xs font-medium text-primary">{post.category}</p>
+                  <h3 className="mt-3 text-base font-semibold leading-6">
+                    <Link href={`/blog/${post.slug}`} className="hover:text-primary">
+                      {post.title}
+                    </Link>
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {post.description}
+                  </p>
+                  <div className="mt-5">
+                    <TextLink href={`/blog/${post.slug}`}>Read guide</TextLink>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="faq-heading">
+          <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+            <div className="text-center">
+              <p className="text-sm font-semibold text-primary">FAQ</p>
+              <h2 id="faq-heading" className="mt-2 text-3xl font-semibold tracking-tight">
+                Questions about payments and invoices
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Availability and requirements can differ by account, currency, and jurisdiction.
+              </p>
+            </div>
+            <div className="mt-9 divide-y divide-border rounded-lg border border-border bg-surface">
+              {marketingFaqs.slice(0, 6).map((faq) => (
+                <details key={faq.question} className="group p-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium">
+                    {faq.question}
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+                      aria-hidden="true"
+                    />
+                  </summary>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+              <TextLink href="/faq">Read all payment and invoicing answers</TextLink>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-border bg-surface">
+          <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+            <div>
+              <h2 className="text-2xl font-semibold">Set up your payment and invoice workflow</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Create an account for the full product, or generate a PDF invoice without signing in.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/register" className={buttonVariants({ size: "lg" })}>
+                Create account
+              </Link>
+              <Link
+                href="/invoice-generator"
+                className={buttonVariants({ variant: "outline", size: "lg" })}
               >
-                <summary className="flex items-center justify-between cursor-pointer list-none text-white font-medium">
-                  {faq.q}
-                  <ArrowRight
-                    className="w-4 h-4 text-white/40 transition-transform group-open:rotate-90"
-                    aria-hidden="true"
-                  />
-                </summary>
-                <p className="text-sm text-white/50 leading-relaxed mt-3">{faq.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section aria-labelledby="cta-heading" className="max-w-7xl mx-auto px-6 lg:px-12 pb-20">
-          <div className="text-center">
-            <h2 id="cta-heading" className="text-3xl font-bold text-white mb-4">
-              Ready to upgrade your money?
-            </h2>
-            <p className="text-white/50 mb-8">
-              Join users in 160+ countries who bank globally with Stablon.
-            </p>
-            <Link href="/register">
-              <Button size="lg">
-                Get Started Free <ArrowRight className="w-4 h-4 ml-1" aria-hidden="true" />
-              </Button>
-            </Link>
+                Generate invoice PDF
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-8">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold text-xs" aria-hidden="true">
-                S
-              </span>
-            </div>
-            <span className="text-sm text-white/50">Stablon Platform</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/contact" className="text-sm text-white/50 hover:text-white transition-colors">
-              Contact us
-            </Link>
-            <p className="text-xs text-white/30">
-              Built with Bridge.xyz stablecoin infrastructure. Demo application.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

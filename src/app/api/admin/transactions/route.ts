@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api-error";
 import { requireSuperAdmin } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { enrichInvoiceActivity } from "@/lib/invoicing/activity";
 import type { ActivityItem, BridgeVirtualAccountEvent } from "@/types/bridge";
 
 export const maxDuration = 60;
@@ -155,9 +156,13 @@ export async function GET(request: Request) {
     }));
     const onrampItems = normalizeAdminOnramps(events, owners);
 
-    const data = [...transferItems, ...onrampItems].sort((a, b) =>
+    const baseData = [...transferItems, ...onrampItems].sort((a, b) =>
       a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0
     );
+    const data = await enrichInvoiceActivity(baseData).catch((error) => {
+      console.error("Failed to enrich admin invoice activity:", error);
+      return baseData;
+    });
 
     const nextState: AdminCursor = {
       transferCursor:

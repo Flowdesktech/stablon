@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/app/(auth)/auth-shell";
 import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
@@ -51,47 +52,46 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="text-2xl font-bold text-white">Stablon</span>
+    <AuthShell
+      eyebrow="Account access"
+      title="Sign in to Stablon"
+      description="Use your account credentials to continue to your workspace."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-medium text-primary hover:underline">
+            Create an account
           </Link>
-          <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-white/60 mt-2">Sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        </>
+      }
+    >
+        <form onSubmit={handleSubmit} className="space-y-5" aria-describedby={error ? "login-error" : undefined}>
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Email
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-foreground">
+              Email address
             </label>
             <Input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              autoComplete="email"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
+            <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-foreground">
               Password
             </label>
             <Input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
+              autoComplete="current-password"
               required
               disabled={twoFactorRequired}
             />
@@ -99,11 +99,12 @@ export default function LoginPage() {
 
           {twoFactorRequired && (
             <div className="animate-fade-in">
-              <label className="flex items-center gap-1.5 text-sm font-medium text-white/70 mb-1.5">
-                <ShieldCheck className="w-4 h-4 text-purple-400" />
-                Authentication Code
+              <label htmlFor="login-totp" className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+                Authentication code
               </label>
               <Input
+                id="login-totp"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -113,38 +114,35 @@ export default function LoginPage() {
                 autoFocus
                 required
               />
-              <p className="text-xs text-white/40 mt-1.5">
+              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
                 Enter the code from your authenticator app, or use a recovery code, to finish signing in.
               </p>
             </div>
           )}
 
           {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
+            <p id="login-error" role="alert" className="rounded-md border border-danger/25 bg-danger-muted px-3 py-2.5 text-sm text-danger">
+              {error}
+            </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading} aria-busy={loading}>
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Signing in…
+              </>
             ) : twoFactorRequired ? (
               <>
-                Verify &amp; Sign In <ShieldCheck className="w-4 h-4" />
+                Verify and sign in <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               </>
             ) : (
               <>
-                Sign In <ArrowRight className="w-4 h-4" />
+                Sign in <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </>
             )}
           </Button>
         </form>
-
-        <p className="text-center text-white/50 text-sm mt-6">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-purple-400 hover:underline">
-            Create one
-          </Link>
-        </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

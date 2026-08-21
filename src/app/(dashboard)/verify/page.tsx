@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page";
 import { CountrySelect, Combobox } from "@/components/ui/country-select";
 import { toast } from "@/components/ui/toast";
 import { useProfile } from "@/hooks/use-profile";
@@ -361,12 +362,12 @@ export default function VerifyPage() {
       <div className="max-w-2xl animate-fade-in">
         <Card>
           <CardContent className="p-10 flex flex-col items-center gap-3 text-center">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-            <p className="text-white font-medium">You&apos;re already verified</p>
-            <p className="text-sm text-white/50">Your identity has been approved by Bridge.</p>
-            <Link href="/settings">
-              <Button variant="outline">Back to settings</Button>
-            </Link>
+            <CheckCircle2 className="h-10 w-10 text-success" />
+            <p className="font-medium text-foreground">You&apos;re already verified</p>
+            <p className="text-sm text-muted-foreground">Your identity has been approved.</p>
+            <Button asChild variant="outline">
+              <Link href="/settings">Back to settings</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -378,13 +379,10 @@ export default function VerifyPage() {
   if (isTopUp) {
     return (
       <div className="space-y-6 animate-fade-in max-w-xl">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Finish verifying</h1>
-          <p className="text-white/50 mt-1">
-            We already have most of your details — just a couple of items left to complete your
-            verification.
-          </p>
-        </div>
+        <PageHeader
+          title="Finish verifying"
+          description="We already have most of your details. Complete the remaining items below."
+        />
 
         {gaps.taxId && (
           <Card>
@@ -395,7 +393,7 @@ export default function VerifyPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Identifier type">
                   <Select value={idType} onChange={setIdType} options={TAX_ID_TYPES} />
                 </Field>
@@ -421,7 +419,7 @@ export default function VerifyPage() {
               <CardDescription>Provide your ID details and a photo of the front.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Document type">
                   <Select value={idType} onChange={setIdType} options={GOV_ID_TYPES} />
                 </Field>
@@ -436,7 +434,7 @@ export default function VerifyPage() {
                   placeholder={idNumberPlaceholder(idType)}
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <UploadField
                   label="ID front"
                   value={idImageFront}
@@ -475,7 +473,7 @@ export default function VerifyPage() {
               <CardDescription>Bridge needs these to finish verifying you.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Employment status">
                   <Select value={employmentStatus} onChange={setEmploymentStatus} options={EMPLOYMENT} placeholder="Select…" />
                 </Field>
@@ -483,7 +481,7 @@ export default function VerifyPage() {
                   <Select value={monthlyVolume} onChange={setMonthlyVolume} options={MONTHLY_VOLUME} placeholder="Select…" />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Source of funds">
                   <Select value={sourceOfFunds} onChange={setSourceOfFunds} options={SOURCE_OF_FUNDS} placeholder="Select…" />
                 </Field>
@@ -521,26 +519,24 @@ export default function VerifyPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Verify your identity</h1>
-        <p className="text-white/50 mt-1">
-          Complete verification in-app to unlock deposits, payouts, and cards.
-        </p>
-      </div>
+      <PageHeader
+        title="Verify your identity"
+        description="Complete the required steps to unlock eligible account features."
+      />
 
       {/* Mode selection */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ModeCard
           active={mode === "little"}
           onClick={() => selectMode("little")}
-          icon={<Zap className="w-5 h-5 text-amber-400" />}
+          icon={<Zap className="h-5 w-5 text-warning" />}
           title="Quick verification"
           desc="Basic details only — no documents. Fastest way to get started."
         />
         <ModeCard
           active={mode === "advanced"}
           onClick={() => selectMode("advanced")}
-          icon={<FileCheck2 className="w-5 h-5 text-purple-400" />}
+          icon={<FileCheck2 className="h-5 w-5 text-info" />}
           title="Full verification"
           desc="Adds ID documents & proof of address. Unlocks EUR / SEPA and higher limits."
         />
@@ -554,7 +550,7 @@ export default function VerifyPage() {
         </CardHeader>
         <CardContent>
           {signedAgreementId ? (
-            <div className="flex items-center gap-2 text-sm text-emerald-400">
+            <div className="flex items-center gap-2 text-sm text-success">
               <CheckCircle2 className="w-4 h-4" /> Terms of Service accepted
             </div>
           ) : (
@@ -577,7 +573,7 @@ export default function VerifyPage() {
           <CardDescription>Enter your legal information exactly as on your ID.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="First name">
               <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </Field>
@@ -585,7 +581,7 @@ export default function VerifyPage() {
               <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Date of birth">
               <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
             </Field>
@@ -600,7 +596,7 @@ export default function VerifyPage() {
           <Field label="Apt / suite (optional)">
             <Input value={streetLine2} onChange={(e) => setStreetLine2(e.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="City">
               <Input value={city} onChange={(e) => setCity(e.target.value)} />
             </Field>
@@ -608,7 +604,7 @@ export default function VerifyPage() {
               <Input value={subdivision} onChange={(e) => setSubdivision(e.target.value)} placeholder="e.g. NY, MAN" />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Postal code">
               <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
             </Field>
@@ -639,7 +635,7 @@ export default function VerifyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label={mode === "advanced" ? "Document type" : "Identifier type"}>
               <Select value={idType} onChange={setIdType} options={idTypeOptions} />
             </Field>
@@ -656,7 +652,7 @@ export default function VerifyPage() {
           </Field>
 
           {mode === "advanced" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <UploadField
                 label="ID front"
                 value={idImageFront}
@@ -685,7 +681,7 @@ export default function VerifyPage() {
               value={proofOfAddress}
               onChange={(e) => handleUpload(e, setProofOfAddress)}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Employment status">
                 <Select value={employmentStatus} onChange={setEmploymentStatus} options={EMPLOYMENT} placeholder="Select…" />
               </Field>
@@ -693,7 +689,7 @@ export default function VerifyPage() {
                 <Select value={monthlyVolume} onChange={setMonthlyVolume} options={MONTHLY_VOLUME} placeholder="Select…" />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Source of funds">
                 <Select value={sourceOfFunds} onChange={setSourceOfFunds} options={SOURCE_OF_FUNDS} placeholder="Select…" />
               </Field>
@@ -715,7 +711,7 @@ export default function VerifyPage() {
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-muted-foreground">
           {signedAgreementId ? "Ready to submit." : "Accept the Terms of Service to continue."}
         </p>
         <Button disabled={!canSubmit} onClick={handleSubmit}>
@@ -731,9 +727,9 @@ export default function VerifyPage() {
         </Button>
       </div>
 
-      <p className="text-center text-xs text-white/30">
+      <p className="text-center text-xs text-muted-foreground">
         Prefer the guided flow?{" "}
-        <Link href="/settings" className="text-purple-400 hover:underline">
+        <Link href="/settings" className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Use hosted verification
         </Link>
       </p>
@@ -758,26 +754,26 @@ function ModeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-xl border p-4 transition-colors cursor-pointer ${
+      className={`rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
         active
-          ? "border-purple-500/60 bg-purple-500/10"
-          : "border-white/10 bg-white/[0.02] hover:bg-white/[0.04]"
+          ? "border-primary bg-info-muted"
+          : "border-border bg-surface hover:bg-surface-muted"
       }`}
     >
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-white font-medium">{title}</span>
-        {active && <ShieldCheck className="w-4 h-4 text-purple-300 ml-auto" />}
+        <span className="font-medium text-foreground">{title}</span>
+        {active && <ShieldCheck className="ml-auto h-4 w-4 text-primary" />}
       </div>
-      <p className="text-xs text-white/50 mt-2">{desc}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{desc}</p>
     </button>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-[11px] uppercase tracking-wide text-white/40 mb-1">{label}</label>
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-foreground">{label}</label>
       {children}
     </div>
   );
@@ -798,11 +794,11 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full h-10 rounded-lg bg-white/[0.03] border border-white/10 px-2 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
+      className="h-10 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground shadow-[var(--shadow-sm)] outline-none transition-colors focus:border-focus focus:ring-2 focus:ring-focus/20"
     >
-      {placeholder && <option value="" className="bg-[#14141c]">{placeholder}</option>}
+      {placeholder && <option value="">{placeholder}</option>}
       {options.map((o) => (
-        <option key={o.value} value={o.value} className="bg-[#14141c]">
+        <option key={o.value} value={o.value}>
           {o.label}
         </option>
       ))}
@@ -820,12 +816,12 @@ function UploadField({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <div>
-      <label className="block text-[11px] uppercase tracking-wide text-white/40 mb-1">{label}</label>
-      <label className="flex items-center gap-2 h-10 px-3 rounded-lg bg-white/[0.03] border border-white/10 cursor-pointer hover:bg-white/[0.05] transition-colors text-sm text-white/70">
+    <div className="space-y-1.5">
+      <span className="block text-sm font-medium text-foreground">{label}</span>
+      <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground shadow-[var(--shadow-sm)] transition-colors hover:bg-surface-muted focus-within:ring-2 focus-within:ring-focus">
         {value ? (
           <>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> File attached
+            <CheckCircle2 className="h-4 w-4 text-success" /> File attached
           </>
         ) : (
           <>

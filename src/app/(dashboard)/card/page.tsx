@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { PageHeader, SectionHeader } from "@/components/ui/page";
 import { useCards, provisionCard, useCardTransactions, toggleCardFreeze } from "@/hooks/use-bridge";
 import { formatDate } from "@/lib/utils";
 import type { BridgeCardAccount, BridgeCardTransaction } from "@/types/bridge";
@@ -18,8 +21,6 @@ import {
   Clock,
   Shield,
   Loader2,
-  Inbox,
-  AlertTriangle,
 } from "lucide-react";
 
 export default function CardPage() {
@@ -60,11 +61,8 @@ export default function CardPage() {
   if (isLoading) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-          <p className="text-white/50 mt-1">Manage your Stablon Visa card</p>
-        </div>
-        <div className="skeleton h-64 max-w-md rounded-2xl" />
+        <PageHeader title="Visa card" description="Manage your card and review card activity." />
+        <DataView className="max-w-md"><DataState kind="loading" title="Loading card" /></DataView>
       </div>
     );
   }
@@ -72,23 +70,15 @@ export default function CardPage() {
   if (error) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-          <p className="text-white/50 mt-1">Spend your stablecoins anywhere Visa is accepted</p>
-        </div>
+        <PageHeader title="Visa card" description="Manage your card and review card activity." />
         <div className="flex items-center justify-center min-h-[400px]">
-          <Card className="max-w-md w-full text-center border-amber-500/20">
-            <CardContent className="p-8 flex flex-col items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center">
-                <AlertTriangle className="w-7 h-7 text-amber-300" />
-              </div>
-              <h2 className="text-xl font-bold text-white">Cards unavailable</h2>
-              <p className="text-sm text-white/60">{error.message}</p>
-              <Button variant="outline" onClick={() => mutate()}>
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
+          <Alert
+            className="w-full max-w-md"
+            variant="danger"
+            title="Cards unavailable"
+            description={error.message}
+            action={<Button variant="outline" onClick={() => mutate()}>Try again</Button>}
+          />
         </div>
       </div>
     );
@@ -97,31 +87,27 @@ export default function CardPage() {
   if (!card) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-          <p className="text-white/50 mt-1">Spend your stablecoins anywhere Visa is accepted</p>
-        </div>
+        <PageHeader title="Visa card" description="Create and manage your virtual card." />
         <div className="flex items-center justify-center min-h-[400px]">
           <Card className="max-w-md w-full text-center">
             <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center mx-auto mb-6">
-                <CreditCard className="w-8 h-8 text-white" />
+              <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-info-muted">
+                <CreditCard className="h-7 w-7 text-primary" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Get Your Stablon Card</h2>
-              <p className="text-white/50 text-sm mb-6">
-                Spend stablecoins like cash at 200M+ merchants worldwide.
-                Free digital card with Apple Pay and Google Pay support.
+              <h2 className="mb-2 text-xl font-semibold text-foreground">Create your virtual card</h2>
+              <p className="mb-6 text-sm text-muted-foreground">
+                Request a card linked to your account balance.
               </p>
               <div className="space-y-3 text-left mb-6">
-                {["0% fee on USD spending", "Free virtual card", "Apple Pay & Google Pay", "Instant transaction alerts"].map((f) => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-white/60">
-                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                {["Card controls in your account", "Transaction history", "Freeze and unfreeze controls"].map((f) => (
+                  <div key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                     {f}
                   </div>
                 ))}
               </div>
               <Button className="w-full" onClick={handleProvision} disabled={provisioning}>
-                {provisioning ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Card...</> : "Activate Free Card"}
+                {provisioning ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating card...</> : "Create card"}
               </Button>
             </CardContent>
           </Card>
@@ -137,41 +123,38 @@ export default function CardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Visa Card</h1>
-        <p className="text-white/50 mt-1">Manage your Stablon Visa card</p>
-      </div>
+      <PageHeader title="Visa card" description="Manage your card controls and review card activity." />
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
           <div className="relative w-full max-w-md">
-            <div className={`aspect-[1.586/1] rounded-2xl p-6 flex flex-col justify-between transition-all ${frozen ? "bg-gradient-to-br from-gray-700 to-gray-900" : "bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700"}`}>
+            <div className={`flex aspect-[1.586/1] flex-col justify-between rounded-lg border p-6 shadow-[var(--shadow-md)] transition-colors ${frozen ? "border-border-strong bg-surface-muted text-muted-foreground" : "border-foreground/10 bg-foreground text-background"}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">S</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-current/20">
+                    <span className="text-sm font-semibold">S</span>
                   </div>
-                  <span className="text-white/80 text-sm font-medium">Stablon</span>
+                  <span className="text-sm font-medium">Stablon</span>
                 </div>
                 {frozen && <Badge variant="warning">Frozen</Badge>}
               </div>
               <div>
-                <p className="text-white/60 text-xs mb-1">Card Number</p>
-                <p className="text-white text-lg font-mono tracking-widest">
+                <p className="mb-1 text-xs opacity-70">Card number</p>
+                <p className="font-mono text-lg tracking-widest">
                   {showNumber ? cardNumber : `•••• •••• •••• ${last4}`}
                 </p>
               </div>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-white/60 text-[10px]">VALID THRU</p>
-                  <p className="text-white text-sm font-mono">{showNumber ? expiry : "••/••"}</p>
+                  <p className="text-[10px] opacity-70">VALID THRU</p>
+                  <p className="font-mono text-sm">{showNumber ? expiry : "••/••"}</p>
                 </div>
                 <div>
-                  <p className="text-white/60 text-[10px]">CVV</p>
-                  <p className="text-white text-sm font-mono">{showNumber ? cvv : "•••"}</p>
+                  <p className="text-[10px] opacity-70">CVV</p>
+                  <p className="font-mono text-sm">{showNumber ? cvv : "•••"}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-bold text-lg italic">VISA</p>
+                  <p className="text-lg font-semibold italic">VISA</p>
                 </div>
               </div>
             </div>
@@ -187,7 +170,7 @@ export default function CardPage() {
               size="sm"
               onClick={handleToggleFreeze}
               disabled={freezing}
-              className={frozen ? "border-amber-500/30 text-amber-300" : ""}
+              className={frozen ? "border-warning/30 text-warning" : ""}
             >
               {freezing ? <Loader2 className="w-4 h-4 animate-spin" /> : frozen ? <Sun className="w-4 h-4" /> : <Snowflake className="w-4 h-4" />}
               {frozen ? "Unfreeze" : "Freeze"} Card
@@ -213,8 +196,8 @@ export default function CardPage() {
                 { label: "Google Pay", value: "Active" },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between text-sm">
-                  <span className="text-white/50">{item.label}</span>
-                  <span className="text-white">{item.value}</span>
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className="text-foreground">{item.value}</span>
                 </div>
               ))}
             </CardContent>
@@ -222,10 +205,10 @@ export default function CardPage() {
 
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
-              <Shield className="w-5 h-5 text-emerald-400 shrink-0" />
+              <Shield className="h-5 w-5 shrink-0 text-success" />
               <div>
-                <p className="text-sm font-medium text-white">Card Protected</p>
-                <p className="text-xs text-white/40">Instant freeze, real-time alerts, zero liability</p>
+                <p className="text-sm font-medium text-foreground">Card controls</p>
+                <p className="text-xs text-muted-foreground">Freeze or unfreeze your card at any time.</p>
               </div>
             </CardContent>
           </Card>
@@ -234,42 +217,37 @@ export default function CardPage() {
 
       {/* Transactions */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Card Transactions</h2>
-        <Card>
-          <CardContent className="p-0">
+        <SectionHeader title="Card transactions" className="mb-4" />
+        <DataView>
             {txLoading ? (
               <div className="p-6 space-y-3">
                 {[1, 2, 3].map((i) => <div key={i} className="skeleton h-12" />)}
               </div>
             ) : (transactions as BridgeCardTransaction[]).length > 0 ? (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {(transactions as BridgeCardTransaction[]).map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                  <div key={tx.id} className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-surface-muted sm:px-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
-                        <ShoppingBag className="w-4 h-4 text-white/50" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-subtle">
+                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">{tx.merchant_name}</p>
-                        <div className="flex items-center gap-1.5 text-xs text-white/40">
+                        <p className="text-sm font-medium text-foreground">{tx.merchant_name}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" /> {formatDate(tx.created_at)}
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-foreground">
                       -${parseFloat(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 flex flex-col items-center gap-3 text-center">
-                <Inbox className="w-8 h-8 text-white/20" />
-                <p className="text-sm text-white/40">No card transactions yet. Start spending to see them here.</p>
-              </div>
+              <DataState title="No card transactions yet" description="Card activity will appear here." />
             )}
-          </CardContent>
-        </Card>
+        </DataView>
       </div>
     </div>
   );

@@ -2,10 +2,10 @@ name: Deploy Firestore rules & indexes
 
 # The Next.js app itself is hosted on Vercel. This workflow only deploys the
 # Firebase backend artifacts that live in this repo — the locked-down Firestore
-# security rules and indexes — whenever they change on the main branch.
+# security rules and indexes — whenever they change on the production branch.
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - firestore.rules
       - firestore.indexes.json

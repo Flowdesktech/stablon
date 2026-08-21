@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { DataState, DataView } from "@/components/ui/data-view";
+import { PageHeader, SectionHeader } from "@/components/ui/page";
 import { useWallets, useExchangeRate, createTransfer, useTransfers } from "@/hooks/use-bridge";
 import { formatDate } from "@/lib/utils";
 import { aggregateWalletBalances } from "@/lib/bridge";
@@ -17,15 +20,10 @@ import {
   TrendingUp,
   ChevronDown,
   Zap,
-  CheckCircle2,
   Loader2,
-  Inbox,
 } from "lucide-react";
 
-// Bridge's exchange-rates API only quotes these pairs: USD ↔ BRL, COP, EUR,
-// GBP, MXN, USDT. Of those we surface the ones this app supports (MXN/BRL were
-// removed). Crypto like USDC/USDB is NOT directly convertible to fiat here, so
-// we only list currencies that have a real rate.
+// Surface only the fiat and stablecoin pairs this product supports.
 const SWAP_PAIRS: Array<[string, string]> = [
   ["usd", "eur"],
   ["usd", "gbp"],
@@ -108,7 +106,7 @@ export default function SwapPage() {
   const swapTransfers = (transfers as BridgeTransfer[]).filter((t) => {
     const src = t.source?.payment_rail || "";
     const dst = t.destination?.payment_rail || "";
-    return !["ach", "wire", "sepa", "pix", "spei"].some((r) => src.includes(r) || dst.includes(r));
+    return !["ach", "wire", "sepa"].some((r) => src.includes(r) || dst.includes(r));
   }).slice(0, 5);
 
   async function handleSwap() {
@@ -137,23 +135,20 @@ export default function SwapPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Swap</h1>
-        <p className="text-white/50 mt-1">
-          Convert between supported currencies instantly.{" "}
-          <span className="text-white/70">Available pairs: USD ↔ EUR, USD ↔ GBP, USD ↔ USDT.</span>
-        </p>
-      </div>
+      <PageHeader
+        title="Swap"
+        description="Convert supported balances between USD, EUR, GBP, and USDT."
+      />
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-6 space-y-2">
               {/* From */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
+              <div className="rounded-md border border-border bg-surface-muted p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/40">You pay</span>
-                  <span className="text-xs text-white/40">Balance: {fromCurrencyData.balance}</span>
+                  <span className="text-xs text-muted-foreground">You pay</span>
+                  <span className="text-xs text-muted-foreground">Balance: {fromCurrencyData.balance}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Input
@@ -166,13 +161,13 @@ export default function SwapPage() {
                   <div className="relative">
                     <button
                       onClick={() => { setShowFromPicker(!showFromPicker); setShowToPicker(false); }}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
-                      <span className="text-sm font-medium text-white">{fromCurrencyData.name}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-white/40" />
+                      <span className="text-sm font-medium text-foreground">{fromCurrencyData.name}</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                     {showFromPicker && (
-                      <div className="absolute top-full right-0 mt-2 w-48 rounded-xl bg-[#1a1a2e] border border-white/10 shadow-xl z-10 py-1">
+                      <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-md border border-border-strong bg-surface py-1 shadow-[var(--shadow-md)]">
                         {currencies.filter((c) => c.id !== toCurrency).map((c) => (
                           <button
                             key={c.id}
@@ -186,10 +181,10 @@ export default function SwapPage() {
                                 if (next) setToCurrency(next);
                               }
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer"
+                            className="w-full px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                           >
                             <span className="font-medium">{c.name}</span>
-                            <span className="text-white/40 ml-2">{c.fullName}</span>
+                            <span className="ml-2 text-muted-foreground">{c.fullName}</span>
                           </button>
                         ))}
                       </div>
@@ -199,13 +194,13 @@ export default function SwapPage() {
                 {fromAmount && (
                   <button
                     onClick={() => setFromAmount(fromCurrencyData.balance.replace(/,/g, ""))}
-                    className="text-xs text-purple-400 hover:underline mt-1 cursor-pointer"
+                    className="mt-1 text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     Use Max
                   </button>
                 )}
                 {insufficientBalance && (
-                  <p className="text-xs text-red-400 mt-1">
+                  <p className="mt-1 text-xs text-danger">
                     Insufficient {fromCurrencyData.name} balance (available: {fromCurrencyData.balance}).
                   </p>
                 )}
@@ -214,40 +209,40 @@ export default function SwapPage() {
               <div className="flex justify-center -my-1 relative z-10">
                 <button
                   onClick={flipCurrencies}
-                  className="w-10 h-10 rounded-xl bg-[#1a1a2e] border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
+                  className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-surface text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  <ArrowDown className="w-4 h-4 text-white/60" />
+                  <ArrowDown className="h-4 w-4" />
                 </button>
               </div>
 
               {/* To */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-4">
+              <div className="rounded-md border border-border bg-surface-muted p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/40">You receive</span>
-                  <span className="text-xs text-white/40">Balance: {toCurrencyData.balance}</span>
+                  <span className="text-xs text-muted-foreground">You receive</span>
+                  <span className="text-xs text-muted-foreground">Balance: {toCurrencyData.balance}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-white flex-1">
-                    {toAmount || <span className="text-white/20">0.00</span>}
+                  <div className="flex-1 text-2xl font-semibold text-foreground">
+                    {toAmount || <span className="text-muted-foreground">0.00</span>}
                   </div>
                   <div className="relative">
                     <button
                       onClick={() => { setShowToPicker(!showToPicker); setShowFromPicker(false); }}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
-                      <span className="text-sm font-medium text-white">{toCurrencyData.name}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-white/40" />
+                      <span className="text-sm font-medium text-foreground">{toCurrencyData.name}</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                     {showToPicker && (
-                      <div className="absolute top-full right-0 mt-2 w-48 rounded-xl bg-[#1a1a2e] border border-white/10 shadow-xl z-10 py-1">
+                      <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-md border border-border-strong bg-surface py-1 shadow-[var(--shadow-md)]">
                         {toOptions.map((c) => (
                           <button
                             key={c.id}
                             onClick={() => { setToCurrency(c.id); setShowToPicker(false); }}
-                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer"
+                            className="w-full px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                           >
                             <span className="font-medium">{c.name}</span>
-                            <span className="text-white/40 ml-2">{c.fullName}</span>
+                            <span className="ml-2 text-muted-foreground">{c.fullName}</span>
                           </button>
                         ))}
                       </div>
@@ -257,35 +252,31 @@ export default function SwapPage() {
               </div>
 
               {pairUnsupported && fromCurrency !== toCurrency && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-xs text-amber-300">
-                    This pair isn't available to swap right now ({fromCurrencyData.name} → {toCurrencyData.name}). Try a different currency.
-                  </p>
-                </div>
+                <Alert
+                  variant="warning"
+                  title="Pair unavailable"
+                  description={`${fromCurrencyData.name} → ${toCurrencyData.name} cannot be quoted right now. Select another pair.`}
+                />
               )}
 
               {fromAmount && rateValue && !pairUnsupported && (
                 <div className="flex items-center justify-between px-2 py-2">
-                  <div className="flex items-center gap-1.5 text-xs text-white/40">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <RefreshCw className="w-3 h-3" />
                     1 {fromCurrencyData.name} = {rateValue.toFixed(4)} {toCurrencyData.name}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-white/40">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Zap className="w-3 h-3" /> Instant
                   </div>
                 </div>
               )}
 
               {swapped ? (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-emerald-300">Swap Complete</p>
-                    <p className="text-xs text-emerald-300/60">
-                      Converted {fromAmount} {fromCurrencyData.name} to {toAmount} {toCurrencyData.name}
-                    </p>
-                  </div>
-                </div>
+                <Alert
+                  variant="success"
+                  title="Swap complete"
+                  description={`Converted ${fromAmount} ${fromCurrencyData.name} to ${toAmount} ${toCurrencyData.name}.`}
+                />
               ) : (
                 <Button onClick={handleSwap} className="w-full" disabled={!swapReady || swapping}>
                   {swapping ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
@@ -300,50 +291,50 @@ export default function SwapPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-purple-400" />
+                <TrendingUp className="h-4 w-4 text-info" />
                 Exchange Rates
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {rateValue ? (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/50">{fromCurrencyData.name} / {toCurrencyData.name}</span>
-                  <span className="text-white font-mono">{rateValue.toFixed(4)}</span>
+                  <span className="text-muted-foreground">{fromCurrencyData.name} / {toCurrencyData.name}</span>
+                  <span className="font-mono text-foreground">{rateValue.toFixed(4)}</span>
                 </div>
               ) : pairUnsupported ? (
-                <p className="text-xs text-amber-300/80">
-                  {fromCurrencyData.name} → {toCurrencyData.name} isn't a supported swap pair.
+                <p className="text-xs text-warning">
+                  {fromCurrencyData.name} → {toCurrencyData.name} isn&apos;t a supported swap pair.
                 </p>
               ) : (
-                <p className="text-xs text-white/40">Select currencies to see live rate</p>
+                <p className="text-xs text-muted-foreground">Select currencies to see the current rate.</p>
               )}
-              <div className="pt-2 border-t border-white/5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">
+              <div className="border-t border-border pt-2">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Supported pairs
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {SWAP_PAIRS.map(([a, b]) => (
                     <span
                       key={`${a}-${b}`}
-                      className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[11px] text-white/60"
+                      className="rounded-md border border-border bg-surface-subtle px-2 py-1 text-[11px] text-muted-foreground"
                     >
                       {CURRENCY_META[a].name} ↔ {CURRENCY_META[b].name}
                     </span>
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-white/30 mt-2">Rates update every ~30 seconds</p>
+              <p className="mt-2 text-xs text-muted-foreground">Rates refresh periodically.</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <Zap className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                <Zap className="mt-0.5 h-5 w-5 shrink-0 text-info" />
                 <div>
-                  <p className="text-sm font-medium text-white">Instant Swaps</p>
-                  <p className="text-xs text-white/40 mt-1">
-                    Swaps between supported pairs are settled instantly. No slippage, no complexity.
+                  <p className="text-sm font-medium text-foreground">Supported pairs</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Availability and quoted rates depend on the selected currencies.
                   </p>
                 </div>
               </div>
@@ -354,41 +345,36 @@ export default function SwapPage() {
 
       {/* History */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Recent Swaps</h2>
-        <Card>
-          <CardContent className="p-0">
+        <SectionHeader title="Recent swaps" className="mb-4" />
+        <DataView>
             {swapTransfers.length > 0 ? (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {swapTransfers.map((swap) => (
                   <div key={swap.id} className="flex items-center justify-between px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                        <ArrowLeftRight className="w-4 h-4 text-purple-400" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-info-muted">
+                        <ArrowLeftRight className="h-4 w-4 text-info" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-foreground">
                           {(swap.source?.currency || "").toUpperCase()} → {(swap.destination?.currency || "").toUpperCase()}
                         </p>
-                        <div className="flex items-center gap-1.5 text-xs text-white/40">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" /> {formatDate(swap.created_at)}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-white/50">{swap.amount} {(swap.source?.currency || "").toUpperCase()}</p>
+                      <p className="text-sm text-muted-foreground">{swap.amount} {(swap.source?.currency || "").toUpperCase()}</p>
                       <Badge variant={swap.state === "completed" ? "success" : "warning"}>{swap.state}</Badge>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 flex flex-col items-center gap-3 text-center">
-                <Inbox className="w-8 h-8 text-white/20" />
-                <p className="text-sm text-white/40">No swap history yet.</p>
-              </div>
+              <DataState title="No swap history yet" description="Completed and pending swaps will appear here." />
             )}
-          </CardContent>
-        </Card>
+        </DataView>
       </div>
     </div>
   );

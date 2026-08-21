@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { normalizeOnrampEvents, normalizeTransfer, sortActivity } from "@/lib/activity";
 import { apiError } from "@/lib/api-error";
+import { enrichInvoiceActivity } from "@/lib/invoicing/activity";
 import type { ActivityItem } from "@/types/bridge";
 
 // Aggregating activity fans out to one Bridge history call per virtual account;
@@ -39,7 +40,11 @@ export async function GET() {
       onrampItems.push(...normalizeOnrampEvents(res.value.data ?? [], accounts[i]));
     });
 
-    const data = sortActivity([...transferItems, ...onrampItems]);
+    const baseData = sortActivity([...transferItems, ...onrampItems]);
+    const data = await enrichInvoiceActivity(baseData, user.uid).catch((error) => {
+      console.error("Failed to enrich invoice activity:", error);
+      return baseData;
+    });
 
     return NextResponse.json({ data });
   } catch (error) {
