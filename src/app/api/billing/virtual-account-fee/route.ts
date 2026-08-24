@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-guards";
 import { createInvoice } from "@/lib/nowpayments";
+import { shouldChargeVirtualAccountFee } from "@/lib/virtual-account-fee";
 
 export const maxDuration = 30;
 
@@ -16,6 +17,10 @@ export async function POST(req: Request) {
     const guard = await requireUser();
     if ("error" in guard) return guard.error;
     const { user } = guard;
+
+    if (!shouldChargeVirtualAccountFee()) {
+      return NextResponse.json({ feeRequired: false, alreadyPaid: true });
+    }
 
     if (user.vaFeePaid) {
       return NextResponse.json({ alreadyPaid: true });

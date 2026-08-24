@@ -10,6 +10,7 @@ export interface Profile {
   twoFactorEnabled: boolean;
   superAdmin: boolean;
   vaFeePaid: boolean;
+  shouldChargeVirtualAccountFee: boolean;
   impersonating: boolean;
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/api-guards";
 import { ADMIN_SESSION_COOKIE } from "@/lib/firebase/server-auth";
+import { shouldChargeVirtualAccountFee } from "@/lib/virtual-account-fee";
 
 // Lightweight profile for the signed-in user. Powers client UI that needs to
 // know identity/role (e.g. showing the admin nav) without exposing secrets.
@@ -22,6 +23,7 @@ export async function GET() {
     twoFactorEnabled: user.twoFactorEnabled,
     superAdmin: user.superAdmin,
     vaFeePaid: user.vaFeePaid,
+    shouldChargeVirtualAccountFee: shouldChargeVirtualAccountFee(),
     impersonating,
   });
 }

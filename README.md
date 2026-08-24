@@ -145,7 +145,8 @@ the measurement ID is configured.
 | `NOWPAYMENTS_API_KEY` | Setup billing | NOWPayments API key |
 | `NOWPAYMENTS_IPN_SECRET` | Setup billing | NOWPayments callback signature secret |
 | `NOWPAYMENTS_API_URL` | No | Override for sandbox testing |
-| `VIRTUAL_ACCOUNT_FEE_USD` | No | Server-side one-time setup fee |
+| `SHOULD_CHARGE_VIRTUAL_ACCOUNT_FEE` | No | Set to `true` to enable the setup fee; defaults to `false` |
+| `VIRTUAL_ACCOUNT_FEE_USD` | No | Server-side one-time setup fee amount when charging is enabled |
 | `NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD` | No | UI mirror; keep equal to the server value |
 
 ## Firebase setup

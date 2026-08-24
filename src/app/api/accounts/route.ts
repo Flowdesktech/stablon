@@ -3,6 +3,7 @@ import { requireUser, requireVerifiedCustomer } from "@/lib/api-guards";
 import * as bridge from "@/lib/bridge";
 import { isSupportedDestination, DESTINATION_CHAINS } from "@/lib/bridge-chains";
 import { apiError } from "@/lib/api-error";
+import { shouldChargeVirtualAccountFee } from "@/lib/virtual-account-fee";
 import type { BridgeVirtualAccount, AppVirtualAccount } from "@/types/bridge";
 
 // Virtual-account provisioning waits on Bridge; allow more than the platform
@@ -73,10 +74,10 @@ export async function POST(req: Request) {
     if ("error" in guard) return guard.error;
     const { user } = guard;
 
-    // Virtual accounts cost us a per-account fee from Bridge, so require the
-    // one-time setup fee (paid via NOWPayments) before provisioning. The UI
-    // treats 402 as "show the payment step" rather than a generic error.
-    if (!user.vaFeePaid) {
+    // Charge the optional one-time setup fee only when explicitly enabled.
+    // The feature flag defaults to false, so account provisioning remains free
+    // unless an operator opts in.
+    if (shouldChargeVirtualAccountFee() && !user.vaFeePaid) {
       return NextResponse.json({ error: "fee_required" }, { status: 402 });
     }
 

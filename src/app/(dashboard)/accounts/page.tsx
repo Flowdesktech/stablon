@@ -43,9 +43,8 @@ import {
   X,
 } from "lucide-react";
 
-// One-time setup fee (USD) charged before the first virtual account is created.
-// Shown prominently so the payment step isn't a surprise. Keep in sync with the
-// server's VIRTUAL_ACCOUNT_FEE_USD.
+// Optional one-time setup fee (USD) shown only when the server-side fee feature
+// flag is enabled. Keep the amount in sync with VIRTUAL_ACCOUNT_FEE_USD.
 const FEE_USD = process.env.NEXT_PUBLIC_VIRTUAL_ACCOUNT_FEE_USD || "10";
 // Ongoing deposit processing fee (%), mirrored from BRIDGE_DEVELOPER_FEE_PERCENT.
 const DEPOSIT_FEE_PERCENT = process.env.NEXT_PUBLIC_BRIDGE_DEVELOPER_FEE_PERCENT || "1";
@@ -294,7 +293,8 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
 export default function AccountsPage() {
   const { accounts, isLoading, mutate } = useVirtualAccounts();
   const { profile } = useProfile();
-  const feePaid = Boolean(profile?.vaFeePaid);
+  const shouldChargeFee = Boolean(profile?.shouldChargeVirtualAccountFee);
+  const feePaid = !shouldChargeFee || Boolean(profile?.vaFeePaid);
   const searchParams = useSearchParams();
   const paidParam = searchParams.get("paid");
   const cancelledParam = searchParams.get("payment");
@@ -362,10 +362,10 @@ export default function AccountsPage() {
         }
       />
 
-      {paidParam === "1" && (
+      {shouldChargeFee && paidParam === "1" && (
         <Alert variant="success" title="Payment received" description="Once it confirms on-chain, you can create your account. Try again in a moment." />
       )}
-      {cancelledParam === "cancelled" && (
+      {shouldChargeFee && cancelledParam === "cancelled" && (
         <Alert variant="warning" title="Payment cancelled" description={`A one-time $${FEE_USD} setup fee is required to create your first virtual account. You can retry below.`} />
       )}
 
