@@ -500,6 +500,26 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <section aria-label="Product recognition" className="border-t border-border">
+          <div className="mx-auto flex max-w-7xl justify-center px-4 py-8 sm:px-6 lg:px-8">
+            <a
+              href="https://codetrendy.com/?utm_source=stablon.app&utm_medium=badge"
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            >
+              {/* CodeTrendy serves this badge dynamically, so it intentionally uses its hosted image. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://codetrendy.com/api/badge?style=classic"
+                alt="Reviewed on CodeTrendy"
+                height="54"
+                loading="lazy"
+              />
+            </a>
+          </div>
+        </section>
       </main>
 
       <PublicFooter />
