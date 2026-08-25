@@ -68,6 +68,22 @@ function FeeNotice() {
   );
 }
 
+function PromotionalFeeNotice() {
+  return (
+    <Alert
+      variant="info"
+      title="Free during the promotional period"
+      description={
+        <>
+          Creating a virtual account normally requires a{" "}
+          <span className="font-medium text-foreground">${FEE_USD} setup fee</span>. During
+          the promotional period, this fee is waived and your virtual account is free to create.
+        </>
+      }
+    />
+  );
+}
+
 // Fiat currencies Bridge can issue virtual accounts for, with their local rail.
 const FIAT_CURRENCIES = [
   { id: "usd", label: "USD", rail: "ACH / Wire", icon: DollarSign, color: "text-success" },
@@ -292,7 +308,7 @@ function AccountCard({ account }: { account: AppVirtualAccount }) {
 
 export default function AccountsPage() {
   const { accounts, isLoading, mutate } = useVirtualAccounts();
-  const { profile } = useProfile();
+  const { profile, isLoading: isProfileLoading } = useProfile();
   const shouldChargeFee = Boolean(profile?.shouldChargeVirtualAccountFee);
   const feePaid = !shouldChargeFee || Boolean(profile?.vaFeePaid);
   const searchParams = useSearchParams();
@@ -440,7 +456,8 @@ export default function AccountsPage() {
               />
             </Field>
 
-            {!feePaid && <FeeNotice />}
+            {!isProfileLoading &&
+              (shouldChargeFee ? !feePaid && <FeeNotice /> : <PromotionalFeeNotice />)}
 
             <Button
               className="w-full"
@@ -484,9 +501,9 @@ export default function AccountsPage() {
               <p className="font-medium text-foreground">No accounts yet</p>
               <p className="mt-1 text-sm text-muted-foreground">Create a USD, EUR, or GBP virtual account to receive payments.</p>
             </div>
-            {!feePaid && (
+            {!isProfileLoading && (!shouldChargeFee || !feePaid) && (
               <div className="w-full max-w-md text-left">
-                <FeeNotice />
+                {shouldChargeFee ? <FeeNotice /> : <PromotionalFeeNotice />}
               </div>
             )}
             <Button onClick={() => setCreating(true)}>
