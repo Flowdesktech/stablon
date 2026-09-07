@@ -13,6 +13,15 @@ export interface SessionUser {
   email: string;
 }
 
+// Mutating cookies is only valid from a Server Action or Route Handler. Keep
+// this separate from getSessionUser(), which is also called while rendering
+// Server Components.
+export async function clearSessionCookies(): Promise<void> {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+  store.delete(ADMIN_SESSION_COOKIE);
+}
+
 // Reads and verifies the Firebase session cookie. Returns null when absent or
 // invalid (expired, revoked, tampered). Checks revocation against the backend.
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -24,12 +33,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
     return { uid: decoded.uid, email: decoded.email ?? "" };
   } catch {
-    // The cookie is present but invalid (expired, revoked, or the user was
-    // deleted). Drop it so the proxy middleware — which only checks for the
-    // cookie's presence — stops treating this as a signed-in session, and the
-    // client gets bounced to /login instead of a broken authed render.
-    store.delete(SESSION_COOKIE);
-    store.delete(ADMIN_SESSION_COOKIE);
+    // Callers running in Route Handlers may clear the invalid cookie. Server
+    // Components must remain read-only and redirect through a Route Handler.
     return null;
   }
 }

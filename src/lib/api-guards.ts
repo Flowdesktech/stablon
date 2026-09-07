@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/firebase/server-auth";
+import {
+  clearSessionCookies,
+  getSessionUser,
+} from "@/lib/firebase/server-auth";
 import { ensureUserDoc, type UserDoc } from "@/lib/users";
 
 type GuardResult = { user: UserDoc } | { error: NextResponse };
@@ -7,6 +10,9 @@ type GuardResult = { user: UserDoc } | { error: NextResponse };
 export async function requireUser(): Promise<GuardResult> {
   const session = await getSessionUser();
   if (!session) {
+    // API guards run inside Route Handlers, where clearing an invalid or stale
+    // cookie is permitted.
+    await clearSessionCookies();
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
   // The Firestore document is created lazily on first authenticated request so

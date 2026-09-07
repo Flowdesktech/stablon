@@ -16,7 +16,10 @@ export default async function DashboardLayout({
   // render, which avoids the client-side redirect race that intermittently
   // surfaced as a "This page could not be found" screen.
   const session = await getSessionUser();
-  if (!session) redirect("/login");
+  // Cookie writes are not allowed while rendering this Server Component.
+  // Route invalid sessions through a handler that clears the stale cookie
+  // before redirecting to login, avoiding a proxy redirect loop.
+  if (!session) redirect("/api/auth/session/invalid");
 
   return (
     <DashboardShell>
