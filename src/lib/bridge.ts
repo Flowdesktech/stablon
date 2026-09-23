@@ -212,6 +212,19 @@ export function deriveKycStatus(
   }
 }
 
+// Changes the email on an existing Bridge customer. PUT merges into the
+// customer, so only `type` (to pick the schema) and `email` are sent.
+export async function updateCustomerEmail(
+  customerId: string,
+  email: string,
+  type: BridgeCustomer["type"] = "individual"
+): Promise<BridgeCustomer> {
+  return bridgeFetch<BridgeCustomer>(`/customers/${customerId}`, {
+    method: "PUT",
+    body: JSON.stringify({ type, email }),
+  });
+}
+
 export async function listCustomers(): Promise<{ data: BridgeCustomer[] }> {
   return bridgeFetch<{ data: BridgeCustomer[] }>("/customers");
 }

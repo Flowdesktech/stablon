@@ -6,7 +6,7 @@ import {
   ADMIN_SESSION_COOKIE,
   SESSION_MAX_AGE_MS,
 } from "@/lib/firebase/server-auth";
-import { ensureUserDoc, updateUserDoc } from "@/lib/users";
+import { ensureUserDoc, syncUserEmail, updateUserDoc } from "@/lib/users";
 import { verifyTotp } from "@/lib/totp";
 import { decryptSecret } from "@/lib/crypto";
 import {
@@ -57,6 +57,9 @@ export async function POST(req: Request) {
     if (user.loginDisabled) {
       return NextResponse.json({ error: "ACCOUNT_DISABLED" }, { status: 403 });
     }
+
+    // The user may have confirmed an email change since their last sign-in.
+    if (decoded.email) await syncUserEmail(user, decoded.email);
 
     if (user.twoFactorEnabled && user.twoFactorSecret) {
       const code = typeof totp === "string" ? totp.trim() : "";

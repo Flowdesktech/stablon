@@ -12,6 +12,7 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword as firebaseUpdatePassword,
+  verifyBeforeUpdateEmail,
   type User,
   type UserCredential,
 } from "firebase/auth";
@@ -272,6 +273,56 @@ export async function changePassword(
       throw new Error("New password is too weak");
     }
     throw new Error("Could not update password");
+  }
+}
+
+// Reauthenticates with the current password, then asks Firebase to email a
+// confirmation link to the new address. The email only changes once that link
+// is opened; Firebase then revokes existing sessions, and the next sign-in
+// (/api/auth/session) syncs the new email to the profile and Bridge customer.
+export async function requestEmailChange(
+  currentPassword: string,
+  newEmail: string
+): Promise<void> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user?.email) throw new Error("You must be signed in to change your email.");
+
+  const email = newEmail.trim().toLowerCase();
+  if (email === user.email.toLowerCase()) {
+    throw new Error("That's already your email address.");
+  }
+
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  try {
+    await reauthenticateWithCredential(user, credential);
+  } catch (err) {
+    if (
+      err instanceof FirebaseError &&
+      (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential")
+    ) {
+      throw new Error("Current password is incorrect");
+    }
+    if (err instanceof FirebaseError && err.code === "auth/too-many-requests") {
+      throw new Error("Too many attempts. Please wait a minute and try again.");
+    }
+    throw new Error("Could not verify your current password");
+  }
+
+  try {
+    await verifyBeforeUpdateEmail(user, email);
+  } catch (err) {
+    if (err instanceof FirebaseError) {
+      switch (err.code) {
+        case "auth/invalid-email":
+        case "auth/invalid-new-email":
+          throw new Error("Enter a valid email address.");
+        case "auth/email-already-in-use":
+          throw new Error("Another account already uses that email.");
+        case "auth/too-many-requests":
+          throw new Error("Too many requests. Wait a few minutes and try again.");
+      }
+    }
+    throw new Error("Could not send the confirmation email. Please try again.");
   }
 }
 

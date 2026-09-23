@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page";
 import { useCustomer, startKYC } from "@/hooks/use-bridge";
 import { toast } from "@/components/ui/toast";
 import { SecuritySection } from "@/components/settings/security-section";
+import { ChangeEmailDialog } from "@/components/settings/change-email-dialog";
 import { outstandingKycRequirements } from "@/lib/kyc";
 import {
   User,
@@ -106,6 +107,12 @@ export default function SettingsPage() {
   const [links, setLinks] = useState<KycLinks | null>(null);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const fetchedRef = useRef(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  // Google-only accounts take their email from Google, so only accounts with a
+  // password credential can change it here (the change requires reauth).
+  const canChangeEmail = Boolean(
+    user?.providerData.some((p) => p.providerId === "password")
+  );
 
   const kycStatus: KYCStatus = (customer?.kyc_status as KYCStatus) || "not_started";
   const statusConfig = kycStatusConfig[kycStatus] || kycStatusConfig.not_started;
@@ -352,8 +359,23 @@ export default function SettingsPage() {
                 <Field label="Full name">
                   <Input defaultValue={user?.displayName || ""} />
                 </Field>
-                <Field label="Email">
-                  <Input defaultValue={user?.email || ""} disabled />
+                <Field
+                  label="Email"
+                  hint={canChangeEmail ? undefined : "Managed by your Google account"}
+                >
+                  <div className="flex gap-2">
+                    <Input value={user?.email || ""} disabled readOnly />
+                    {canChangeEmail && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => setEmailOpen(true)}
+                      >
+                        Change
+                      </Button>
+                    )}
+                  </div>
                 </Field>
               </div>
               <Button size="sm">Save Changes</Button>
@@ -383,6 +405,11 @@ export default function SettingsPage() {
 
           {/* Security */}
           <SecuritySection />
+          <ChangeEmailDialog
+            open={emailOpen}
+            onOpenChange={setEmailOpen}
+            currentEmail={user?.email || ""}
+          />
         </div>
 
         {/* Sidebar info */}

@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/lib/firebase/admin";
+import { updateCustomerEmail } from "@/lib/bridge";
 
 // Shape of the Firestore `users/{uid}` document. Identity (email/password) is
 // owned by Firebase Auth; this document holds app-specific profile state.
@@ -89,4 +90,23 @@ export async function updateUserDoc(
     { ...data, updatedAt: new Date().toISOString() },
     { merge: true }
   );
+}
+
+// Brings the profile (and linked Bridge customer) in line with the email on the
+// Firebase Auth identity, which changes when a user confirms an email-change
+// link. Bridge is updated first; if it fails, the profile keeps the old email
+// so the sync is retried on the next sign-in. Never throws — a failed sync
+// shouldn't block signing in.
+export async function syncUserEmail(user: UserDoc, authEmail: string): Promise<void> {
+  const email = authEmail.trim().toLowerCase();
+  if (!email || email === user.email.toLowerCase()) return;
+
+  try {
+    if (user.bridgeCustomerId) {
+      await updateCustomerEmail(user.bridgeCustomerId, email);
+    }
+    await updateUserDoc(user.uid, { email });
+  } catch (err) {
+    console.error(`[users] failed to sync email for ${user.uid}:`, err);
+  }
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 import { DataState, DataView } from "@/components/ui/data-view";
 import { PageHeader, StatCard } from "@/components/ui/page";
 import {
@@ -27,6 +29,7 @@ import {
   deleteAdminUser,
   impersonateUser,
   setUserLoginDisabled,
+  updateUserEmail,
 } from "@/lib/admin-actions";
 import {
   Users,
@@ -40,6 +43,7 @@ import {
   CircleCheck,
   UserCheck,
   UserX,
+  Mail,
 } from "lucide-react";
 
 interface AdminUser {
@@ -92,6 +96,42 @@ export function AdminUsersTable() {
   const [deleting, setDeleting] = useState(false);
   const [impersonatingUid, setImpersonatingUid] = useState<string | null>(null);
   const [togglingUid, setTogglingUid] = useState<string | null>(null);
+  const [emailTarget, setEmailTarget] = useState<AdminUser | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  function openEditEmail(user: AdminUser) {
+    setEmailTarget(user);
+    setEmailDraft(user.email);
+    setEmailError(null);
+  }
+
+  async function handleSaveEmail(e: FormEvent) {
+    e.preventDefault();
+    if (!emailTarget) return;
+    const next = emailDraft.trim();
+    if (next.toLowerCase() === emailTarget.email.toLowerCase()) {
+      setEmailTarget(null);
+      return;
+    }
+    setSavingEmail(true);
+    setEmailError(null);
+    try {
+      const saved = await updateUserEmail(emailTarget.uid, next);
+      toast({
+        variant: "success",
+        title: "Email updated",
+        description: `${emailTarget.email} is now ${saved}.`,
+      });
+      setEmailTarget(null);
+      mutate();
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setSavingEmail(false);
+    }
+  }
 
   async function handleToggleLogin(user: AdminUser) {
     const next = !user.loginDisabled;
@@ -225,6 +265,7 @@ export function AdminUsersTable() {
                   togglingUid={togglingUid}
                   onView={setViewUser}
                   onToggleLogin={handleToggleLogin}
+                  onEditEmail={openEditEmail}
                   onImpersonate={handleImpersonate}
                   onDelete={setDeleteTarget}
                 />
@@ -256,6 +297,7 @@ export function AdminUsersTable() {
                       togglingUid={togglingUid}
                       onView={setViewUser}
                       onToggleLogin={handleToggleLogin}
+                  onEditEmail={openEditEmail}
                       onImpersonate={handleImpersonate}
                       onDelete={setDeleteTarget}
                     />
@@ -313,6 +355,60 @@ export function AdminUsersTable() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit email */}
+      <Dialog
+        open={!!emailTarget}
+        onOpenChange={(open) => !open && !savingEmail && setEmailTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit email</DialogTitle>
+            <DialogDescription>
+              Updates the sign-in email for{" "}
+              <span className="font-medium text-foreground">{emailTarget?.email}</span>
+              {emailTarget?.bridgeCustomerId
+                ? " and their linked Bridge customer."
+                : "."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveEmail} className="space-y-4">
+            <Field label="New email" required error={emailError ?? undefined}>
+              <Input
+                type="email"
+                required
+                autoFocus
+                maxLength={1024}
+                value={emailDraft}
+                disabled={savingEmail}
+                onChange={(e) => {
+                  setEmailDraft(e.target.value);
+                  setEmailError(null);
+                }}
+              />
+            </Field>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingEmail}
+                onClick={() => setEmailTarget(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingEmail || !emailDraft.trim()}>
+                {savingEmail ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save email"
+                )}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -393,6 +489,7 @@ interface UserActionsProps {
   togglingUid: string | null;
   onView: (user: AdminUser) => void;
   onToggleLogin: (user: AdminUser) => void;
+  onEditEmail: (user: AdminUser) => void;
   onImpersonate: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }
@@ -404,6 +501,7 @@ function UserActions({
   togglingUid,
   onView,
   onToggleLogin,
+  onEditEmail,
   onImpersonate,
   onDelete,
 }: UserActionsProps) {
@@ -437,6 +535,9 @@ function UserActions({
         <DropdownMenuContent>
           <DropdownMenuItem onSelect={() => onView(user)}>
             <Eye className="h-4 w-4" aria-hidden="true" /> View details
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onEditEmail(user)}>
+            <Mail className="h-4 w-4" aria-hidden="true" /> Edit email
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={isSelf || togglingUid !== null}

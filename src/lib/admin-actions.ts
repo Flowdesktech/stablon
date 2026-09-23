@@ -28,6 +28,21 @@ export async function setUserLoginDisabled(
   }
 }
 
+// Changes a user's email in Firebase Auth, on their Bridge customer, and on
+// their profile. Returns the normalized email the server saved.
+export async function updateUserEmail(uid: string, email: string): Promise<string> {
+  const res = await fetch(`/api/admin/users/${uid}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error || "Failed to update email");
+  }
+  return body.email ?? email;
+}
+
 // Signs the admin in as the target user and swaps their session cookie. The
 // caller should hard-navigate afterwards so all cached client state resets.
 export async function impersonateUser(uid: string): Promise<void> {
